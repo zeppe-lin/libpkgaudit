@@ -27,6 +27,6 @@ pkgconf.generate(
   name: 'libpkgaudit',
   filebase: 'libpkgaudit',
   description: 'Package integrity audit library',
-  subdirs: 'pkgaudit',
+  subdirs: 'libpkgaudit',
   requires_private: ['libpkgcore'],
 )
