@@ -35,7 +35,8 @@ public:
   virtual ~probe_engine() = default;
 
   virtual std::vector<symlink_probe>
-  probe_symlinks(const std::vector<std::string>& paths) = 0;
+  probe_symlinks(const std::vector<std::string>& paths,
+                 const std::string& root) = 0;
 
   virtual std::vector<exists_probe>
   probe_exists(const std::vector<std::string>& paths) = 0;

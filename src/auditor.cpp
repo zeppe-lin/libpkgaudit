@@ -71,7 +71,7 @@ auditor::audit_links(const std::string& pkgname, const options& opts) const
   for (const auto& rel : it->second.files)
     full_paths.push_back(opts.root + "/" + rel);
 
-  const auto probed = engine.probe_symlinks(full_paths);
+  const auto probed = engine.probe_symlinks(full_paths, opts.root);
 
   std::vector<issue> out;
   out.reserve(probed.size());

@@ -32,7 +32,8 @@ class serial_probe_engine final : public probe_engine
 {
 public:
   std::vector<symlink_probe>
-  probe_symlinks(const std::vector<std::string>& paths) override
+  probe_symlinks(const std::vector<std::string>& paths,
+                 const std::string& root) override
   {
     std::vector<symlink_probe> out;
     out.reserve(paths.size());
@@ -71,7 +72,7 @@ public:
       r.target = buf;
 
       if (!r.target.empty() && r.target[0] == '/')
-        r.immediate_path = trim_filename(r.target);
+        r.immediate_path = trim_filename(root + r.target);
       else
         r.immediate_path = trim_filename(parent_dir(full) + "/" + r.target);
 
