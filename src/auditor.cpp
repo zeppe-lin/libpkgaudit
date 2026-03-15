@@ -98,8 +98,8 @@ auditor::audit_links(const std::string& pkgname, const options& opts) const
     const auto res_rel = strip_root(
       p.resolved_ok ? p.resolved_path : p.immediate_path, opts.root);
 
-    const auto imm_owners = owners.owners_of(imm_rel);
-    const auto res_owners = owners.owners_of(res_rel);
+    const auto imm_owners = owners.owners_matching_pattern_path(imm_rel);
+    const auto res_owners = owners.owners_matching_pattern_path(res_rel);
 
     if (imm_owners.count(pkgname) || res_owners.count(pkgname))
       continue;
@@ -167,7 +167,7 @@ auditor::audit_disappeared(const std::string& pkgname, const options& opts) cons
     is.message = "disappeared file " + probed[i].path;
 
     if (opts.verbosity > 0)
-      is.immediate_owners = owners.owners_of(rel_paths[i]);
+      is.immediate_owners = owners.owners_of_exact(rel_paths[i]);
 
     out.push_back(std::move(is));
   }
