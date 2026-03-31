@@ -10,7 +10,12 @@ project(
   ],
 )
 
-libpkgcore_dep = dependency('libpkgcore', required: true)
+libpkgcore_dep = dependency(
+  'libpkgcore',
+  required: true,
+  fallback: ['libpkgcore', 'libpkgcore_dep'],
+)
+
 pkgconf = import('pkgconfig')
 
 subdir('src')
