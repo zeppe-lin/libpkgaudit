@@ -14,6 +14,14 @@ libpkgaudit = library(
   soversion: '1',
 )
 
+libpkgaudit_dep = declare_dependency(
+  link_with: libpkgaudit,
+  include_directories: public_inc,
+  dependencies: [libpkgcore_dep],
+)
+
+meson.override_dependency('libpkgaudit', libpkgaudit_dep)
+
 install_headers(
   '../include/libpkgaudit/types.h',
   '../include/libpkgaudit/probe.h',
