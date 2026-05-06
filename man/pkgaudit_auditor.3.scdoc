@@ -1,0 +1,51 @@
+PKGAUDIT_AUDITOR(3)
+
+# NAME
+
+pkgaudit\_auditor - audit execution engine
+
+# SYNOPSIS
+
+```
+#include <libpkgaudit/auditor.h>
+```
+
+# DESCRIPTION
+
+Coordinates execution of audit checks across package metadata,
+ownership index, and probe engine.
+
+# INPUTS
+
+The auditor operates on:
+
+- ownership index
+- probe implementation
+- audit configuration (if provided)
+
+# BEHAVIOR
+
+The auditor iterates over package contents and evaluates:
+
+- symlink validity
+- file presence
+
+# OUTPUT
+
+Produces a sequence of structured issues.
+
+No formatting or presentation is performed.
+
+# DESIGN NOTES
+
+The auditor is functionally pure with respect to output:
+it produces data structures, not text.
+
+# SEE ALSO
+
+*pkgaudit\_ownership\_index*(3),
+*pkgaudit\_probe*(3),
+*pkgaudit\_types*(3),
+*libpkgaudit*(3)
+
+; vim: ft=scdoc cc=72 tw=70

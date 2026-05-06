@@ -1,0 +1,64 @@
+LIBPKGAUDIT(3)
+
+# NAME
+
+libpkgaudit - package integrity audit library
+
+# SYNOPSIS
+
+```
+#include <libpkgaudit/auditor.h>
+#include <libpkgaudit/ownership_index.h>
+#include <libpkgaudit/probe.h>
+#include <libpkgaudit/types.h>
+```
+
+# DESCRIPTION
+
+libpkgaudit is a C++17 library that implements package integrity
+auditing logic independent of any command-line interface.
+
+The library separates auditing into distinct layers:
+
+- Audit model (typed issues and options)
+- Ownership index (path to package reverse mapping)
+- Filesystem probe engine (pluggable execution backend)
+
+This separation allows audit semantics to remain stable while
+execution strategy (e.g. serial, threaded, io\_uring) evolves.
+
+# RESPONSIBILITIES
+
+libpkgaudit provides:
+
+- Broken symlink detection
+- Disappeared file detection
+- Ownership-aware validation
+
+It does not provide:
+
+- Package installation/removal
+- Persistent storage or database primitives
+- CLI parsing or output formatting
+
+# ARCHITECTURE
+
+The typical audit flow:
+
+- Construct ownership_index
+- Create probe engine
+- Invoke auditor
+- Consume generated issues
+
+# INVARIANTS
+
+Audit results *MUST NOT* depend on probe engine implementation.
+
+# SEE ALSO
+
+*pkgaudit\_auditor*(3),
+*pkgaudit\_ownership_index*(3),
+*pkgaudit\_probe*(3),
+*pkgaudit\_types*(3)
+
+; vim: ft=scdoc cc=72 tw=70

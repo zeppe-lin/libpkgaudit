@@ -1,0 +1,65 @@
+PKGAUDIT_TYPES(3)
+
+# NAME
+
+pkgaudit\_types - core audit data structures
+
+# SYNOPSIS
+
+```
+#include <libpkgaudit/types.h>
+```
+
+# DESCRIPTION
+
+Defines the fundamental types used to represent audit results.
+
+# TYPES
+
+## issue_severity
+
+Severity classification of an issue.
+
+Enumeration describing severity level of an issue.
+
+Typical values:
+
+- INFO
+- WARNING
+- ERROR
+
+## issue_kind
+
+Describes the class of detected problem.
+
+Examples include:
+
+- BROKEN_SYMLINK
+- MISSING_FILE
+
+## issue
+
+Represents a single audit finding.
+
+An issue is a fully self-contained record typically including:
+
+- severity
+- kind
+- package identifier
+- filesystem path
+- symlink target (if applicable)
+- ownership information
+
+# DESIGN NOTES
+
+The issue model is deliberately independent of presentation.
+Formatting and reporting are external responsibilities.
+
+# SEE ALSO
+
+*pkgaudit\_auditor*(3),
+*pkgaudit\_ownership\_index*(3),
+*pkgaudit\_probe*(3),
+*libpkgaudit*(3)
+
+; vim: ft=scdoc cc=72 tw=70

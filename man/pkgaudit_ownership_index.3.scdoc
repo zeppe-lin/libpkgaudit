@@ -1,0 +1,48 @@
+PKGAUDIT_OWNERSHIP_INDEX(3)
+
+# NAME
+
+pkgaudit\_ownership\_index - reverse ownership lookup structure
+
+# SYNOPSIS
+
+```
+#include <libpkgaudit/ownership_index.h>
+```
+
+# DESCRIPTION
+
+Provides mapping from filesystem paths to owning packages.
+
+This avoids repeated database traversal during audit.
+
+# SEMANTICS
+
+A lookup yields:
+
+- zero owners (unowned path)
+- one owner (expected case)
+- multiple owners (overlap condition)
+
+# USAGE
+
+The index is constructed from package metadata prior to audit
+execution and treated as immutable during the run.
+
+# PERFORMANCE
+
+Lookup complexity is expected to be constant or logarithmic, depending
+on implementation.
+
+## DESIGN NOTES
+
+Mutation of ownership data during audit is undefined.
+
+# SEE ALSO
+
+*pkgaudit\_auditor*(3),
+*pkgaudit\_probe*(3),
+*pkgaudit\_types*(3),
+*libpkgaudit*(3)
+
+; vim: ft=scdoc cc=72 tw=70

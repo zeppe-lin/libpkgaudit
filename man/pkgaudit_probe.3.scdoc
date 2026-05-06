@@ -1,0 +1,56 @@
+PKGAUDIT_PROBE(3)
+
+# NAME
+
+pkgaudit\_probe - filesystem probing interface
+
+# SYNOPSIS
+
+```
+#include <libpkgaudit/probe.h>
+```
+
+# DESCRIPTION
+
+Abstract interface for filesystem interaction.
+
+Audit logic does not perform syscalls directly.
+All filesystem queries are delegated to a probe implementation.
+
+# REQUIRED OPERATIONS
+
+Implementations are expected to provide:
+
+- lstat-equivalent metadata retrieval
+- readlink resolution
+- existence checks
+
+# DEFAULT IMPLEMENTATION
+
+A serial probe engine is provided:
+
+- synchronous syscall execution
+- deterministic behavior
+- reference correctness baseline
+
+# EXTENSIBILITY
+
+Alternative probe engines may implement:
+
+- parallel traversal
+- asynchronous I/O (e.g., io\_uring)
+
+Such implementations *MUST* preserve audit semantics.
+
+# INVARIANTS
+
+Probe implementation *MUST NOT* alter audit results.
+
+# SEE ALSO
+
+*pkgaudit\_auditor*(3),
+*pkgaudit\_ownership\_index*(3),
+*pkgaudit\_types*(3),
+*libpkgaudit*(3)
+
+; vim: ft=scdoc cc=72 tw=70
