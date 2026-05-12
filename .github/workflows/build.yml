@@ -46,6 +46,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Checkout libpkgcore
+        uses: actions/checkout@v5
+        with:
+          repository: zeppe-lin/libpkgcore
+          path: subprojects/libpkgcore
+
       - name: Install build dependencies
         run: ${{ matrix.env.install }}
 
@@ -54,9 +60,10 @@ jobs:
           meson setup build \
             --buildtype=plain \
             --wrap-mode=nodownload \
+            --force-fallback-for=libpkgcore \
             -D b_lto=false \
             -D b_pie=true \
-            -D build_man=${{ matrix.cfg.build_man }}
+            -D build_man=${{ matrix.cfg.build_man }} \
 
       - name: Compile
         run: meson compile -C build -v
