@@ -29,13 +29,15 @@ jobs:
               sudo apt-get update
               sudo apt-get install -y \
                 meson ninja-build pkg-config g++ \
-                scdoc
+                scdoc \
+                libarchive-dev libacl1-dev attr
           - name: musl
             container: "alpine:latest"
             install: |
               apk add --no-cache \
                 build-base meson ninja pkgconf \
-                scdoc
+                scdoc \
+                libarchive-dev acl-dev attr-dev
         cfg:
           - name: default
             build_man: true
