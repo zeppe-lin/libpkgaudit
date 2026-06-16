@@ -1,4 +1,4 @@
-if get_option('build_man')
+if get_option('manpages')
   scdoc = find_program('scdoc')
 
   foreach section, pages: {
