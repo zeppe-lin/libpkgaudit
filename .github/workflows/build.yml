@@ -40,7 +40,7 @@ jobs:
                 libarchive-dev acl-dev attr-dev
         cfg:
           - name: default
-            build_man: true
+            manpages: true
 
     name: ${{ matrix.env.name }} / ${{ matrix.cfg.name }}
     container: ${{ matrix.env.container != '' && matrix.env.container || null }}
@@ -65,7 +65,7 @@ jobs:
             --force-fallback-for=libpkgcore \
             -D b_lto=false \
             -D b_pie=true \
-            -D build_man=${{ matrix.cfg.build_man }} \
+            -D manpages=${{ matrix.cfg.manpages }} \
 
       - name: Compile
         run: meson compile -C build -v
