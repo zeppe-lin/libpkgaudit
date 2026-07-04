@@ -1,4 +1,6 @@
-option('manpages',
+option(
+  'manpages',
   type: 'boolean',
   value: true,
-  description: 'Build and install manual pages')
+  description: 'Build and install manual pages'
+)
