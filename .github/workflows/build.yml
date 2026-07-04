@@ -39,8 +39,10 @@ jobs:
                 scdoc \
                 libarchive-dev acl-dev attr-dev
         cfg:
-          - name: default
-            manpages: true
+          - name: shared
+            link_mode: shared
+          - name: static
+            link_mode: static
 
     name: ${{ matrix.env.name }} / ${{ matrix.cfg.name }}
     container: ${{ matrix.env.container != '' && matrix.env.container || null }}
@@ -63,9 +65,9 @@ jobs:
             --buildtype=plain \
             --wrap-mode=nodownload \
             --force-fallback-for=libpkgcore \
-            -D b_lto=false \
-            -D b_pie=true \
-            -D manpages=${{ matrix.cfg.manpages }} \
+            -D default_library=${{ matrix.cfg.link_mode }} \
+            -D link_mode=${{ matrix.cfg.link_mode }} \
+            -D libpkgcore:link_mode=${{ matrix.cfg.link_mode }}
 
       - name: Compile
         run: meson compile -C build -v
