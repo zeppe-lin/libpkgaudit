@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 
-#include <libpkgcore/pkgcore.h>
+#include <libpkgcore/libpkgcore.h>
 
 namespace pkgaudit {
 

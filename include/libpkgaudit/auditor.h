@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include <libpkgcore/pkgcore.h>
+#include <libpkgcore/libpkgcore.h>
 
 #include <libpkgaudit/ownership_index.h>
 #include <libpkgaudit/probe.h>

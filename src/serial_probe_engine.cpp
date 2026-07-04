@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <libpkgcore/pkgcore.h>
+#include <libpkgcore/libpkgcore.h>
 
 namespace pkgaudit {
 namespace {
