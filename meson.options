@@ -1,4 +1,12 @@
 option(
+  'link_mode',
+  type: 'combo',
+  choices: ['shared', 'static'],
+  value: 'shared',
+  description: 'How libpkgaudit links against external dependencies'
+)
+
+option(
   'manpages',
   type: 'boolean',
   value: true,
