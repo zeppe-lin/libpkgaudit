@@ -16,7 +16,7 @@ option(
 option(
   'tools',
   type: 'feature',
-  value: 'disabled',
+  value: 'enabled',
   description: 'Build reference command-line tools'
 )
 

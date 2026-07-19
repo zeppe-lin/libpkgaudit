@@ -24,6 +24,16 @@ pkgconf = import('pkgconfig')
 
 subdir('src')
 
+if get_option('tools').enabled()
+  libpkgstate_dep = dependency(
+    'libpkgstate',
+    required: true,
+    static: want_static,
+    fallback: ['libpkgstate', 'libpkgstate_dep'],
+  )
+  subdir('tools')
+endif
+
 if get_option('tests').enabled()
   subdir('tests')
 endif
