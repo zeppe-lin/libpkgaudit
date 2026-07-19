@@ -1,0 +1,9 @@
+/*
+ * Copyright (C) 2026 Alexandr Savca
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+#pragma once
+
+#include <libpkgaudit/error.h>
+#include <libpkgaudit/inventory.h>
+#include <libpkgaudit/path.h>

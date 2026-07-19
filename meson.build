@@ -1,33 +1,31 @@
 project(
   'libpkgaudit',
   'cpp',
-  version: '1.0',
-  meson_version: '>=1.2.0',
+  version: '0.1.0',
+  license: 'GPL-3.0-or-later',
+  meson_version: '>=1.6.0',
   default_options: [
     'cpp_std=c++17',
     'warning_level=3',
-    'default_library=shared',
     'b_ndebug=if-release',
   ],
 )
 
-want_static = get_option('link_mode') == 'static'
-
-if want_static and get_option('default_library') == 'both'
-  error('''
-Invalid configuration: link_mode=static requires default_library=static.
-See project README: Link Mode.
-''')
+if get_option('default_library') == 'both'
+  error('libpkgaudit requires separate shared and static builds')
 endif
 
-libpkgcore_dep = dependency(
-  'libpkgcore',
-  required: true,
-  fallback: ['libpkgcore', 'libpkgcore_dep'],
-  static: want_static,
-)
+want_static = get_option('link_mode') == 'static'
+if want_static and get_option('default_library') != 'static'
+  error('link_mode=static requires default_library=static')
+endif
 
 pkgconf = import('pkgconfig')
 
 subdir('src')
+
+if get_option('tests').enabled()
+  subdir('tests')
+endif
+
 subdir('man')

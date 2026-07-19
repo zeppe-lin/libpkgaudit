@@ -1,32 +1,32 @@
 public_inc = include_directories('../include')
 
+libpkgaudit_sources = files(
+  'error.cpp',
+  'inventory.cpp',
+  'path.cpp',
+)
+
 libpkgaudit = library(
   'pkgaudit',
-  [
-    'ownership_index.cpp',
-    'auditor.cpp',
-    'serial_probe_engine.cpp',
-  ],
-  include_directories: [public_inc],
-  dependencies: [libpkgcore_dep],
+  libpkgaudit_sources,
+  include_directories: public_inc,
   install: true,
   version: meson.project_version(),
-  soversion: '1',
+  soversion: '0',
 )
 
 libpkgaudit_dep = declare_dependency(
   link_with: libpkgaudit,
   include_directories: public_inc,
-  dependencies: [libpkgcore_dep],
 )
 
 meson.override_dependency('libpkgaudit', libpkgaudit_dep)
 
 install_headers(
-  '../include/libpkgaudit/types.h',
-  '../include/libpkgaudit/probe.h',
-  '../include/libpkgaudit/ownership_index.h',
-  '../include/libpkgaudit/auditor.h',
+  '../include/libpkgaudit/error.h',
+  '../include/libpkgaudit/inventory.h',
+  '../include/libpkgaudit/libpkgaudit.h',
+  '../include/libpkgaudit/path.h',
   subdir: 'libpkgaudit',
 )
 
@@ -34,7 +34,6 @@ pkgconf.generate(
   libpkgaudit,
   name: 'libpkgaudit',
   filebase: 'libpkgaudit',
-  description: 'Package integrity audit library',
+  description: 'Backend-neutral package integrity audit library',
   subdirs: 'libpkgaudit',
-  requires_private: ['libpkgcore'],
 )

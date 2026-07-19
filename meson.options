@@ -3,12 +3,33 @@ option(
   type: 'combo',
   choices: ['shared', 'static'],
   value: 'shared',
-  description: 'How libpkgaudit links against external dependencies'
+  description: 'How optional external dependencies are linked'
+)
+
+option(
+  'tests',
+  type: 'feature',
+  value: 'enabled',
+  description: 'Build the libpkgaudit test suite'
+)
+
+option(
+  'tools',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Build reference command-line tools'
+)
+
+option(
+  'install_tools',
+  type: 'boolean',
+  value: false,
+  description: 'Install reference command-line tools'
 )
 
 option(
   'manpages',
-  type: 'boolean',
-  value: true,
+  type: 'feature',
+  value: 'auto',
   description: 'Build and install manual pages'
 )
