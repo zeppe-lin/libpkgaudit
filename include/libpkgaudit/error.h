@@ -1,7 +1,6 @@
-/*
- * Copyright (C) 2026 Alexandr Savca
- * SPDX-License-Identifier: GPL-3.0-or-later
- */
+// SPDX-FileCopyrightText: 2026 Alexandr Savca
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /*! \file error.h
  *  \brief Exceptions raised while constructing audit inputs or requests.
  */

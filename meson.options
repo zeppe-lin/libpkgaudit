@@ -1,35 +1,14 @@
-option(
-  'link_mode',
-  type: 'combo',
-  choices: ['shared', 'static'],
-  value: 'shared',
-  description: 'How optional external dependencies are linked'
-)
+# SPDX-FileCopyrightText: 2026 Alexandr Savca
+# SPDX-License-Identifier: GPL-3.0-or-later
 
-option(
-  'tests',
-  type: 'feature',
-  value: 'enabled',
-  description: 'Build the libpkgaudit test suite'
-)
-
-option(
-  'tools',
-  type: 'feature',
-  value: 'enabled',
-  description: 'Build reference command-line tools'
-)
-
-option(
-  'install_tools',
-  type: 'boolean',
-  value: false,
-  description: 'Install reference command-line tools'
-)
-
-option(
-  'manpages',
-  type: 'feature',
-  value: 'auto',
-  description: 'Build and install manual pages'
-)
+option('link_mode', type: 'combo', choices: ['shared', 'static'],
+       value: 'shared',
+       description: 'How optional external dependencies are linked')
+option('tests', type: 'feature', value: 'enabled',
+       description: 'Build the libpkgaudit test suite')
+option('tools', type: 'feature', value: 'enabled',
+       description: 'Build reference command-line tools')
+option('install_tools', type: 'boolean', value: false,
+       description: 'Install reference command-line tools')
+option('man_pages', type: 'feature', value: 'auto',
+       description: 'Build and install manual pages')

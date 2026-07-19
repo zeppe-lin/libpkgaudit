@@ -1,5 +1,7 @@
-#include <libpkgaudit/audit.h>
+// SPDX-FileCopyrightText: 2026 Alexandr Savca
+// SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <libpkgaudit/audit.h>
 #include <libpkgaudit/error.h>
 
 #include <algorithm>

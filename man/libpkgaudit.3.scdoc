@@ -62,4 +62,4 @@ violations are returned in the report rather than silently ignored.
 
 *pkgchk*(1)
 
-; vim: ft=scdoc cc=72 tw=70
+; vim: ft=scdoc
