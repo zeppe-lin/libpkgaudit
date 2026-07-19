@@ -1,6 +1,7 @@
 public_inc = include_directories('../include')
 
 libpkgaudit_sources = files(
+  'audit.cpp',
   'error.cpp',
   'inventory.cpp',
   'path.cpp',
