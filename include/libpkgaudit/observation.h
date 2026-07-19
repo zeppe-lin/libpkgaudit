@@ -37,6 +37,7 @@ enum class probe_error
   object_changed,
   too_many_symlinks,
   outside_root,
+  unrepresentable_path,
 };
 
 struct probe_failure final

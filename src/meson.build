@@ -5,6 +5,7 @@ libpkgaudit_sources = files(
   'error.cpp',
   'inventory.cpp',
   'path.cpp',
+  'posix_filesystem.cpp',
   'report.cpp',
   'request.cpp',
 )
