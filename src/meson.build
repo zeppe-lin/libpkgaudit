@@ -4,6 +4,8 @@ libpkgaudit_sources = files(
   'error.cpp',
   'inventory.cpp',
   'path.cpp',
+  'report.cpp',
+  'request.cpp',
 )
 
 libpkgaudit = library(
@@ -23,10 +25,14 @@ libpkgaudit_dep = declare_dependency(
 meson.override_dependency('libpkgaudit', libpkgaudit_dep)
 
 install_headers(
+  '../include/libpkgaudit/audit.h',
   '../include/libpkgaudit/error.h',
+  '../include/libpkgaudit/filesystem.h',
   '../include/libpkgaudit/inventory.h',
   '../include/libpkgaudit/libpkgaudit.h',
+  '../include/libpkgaudit/observation.h',
   '../include/libpkgaudit/path.h',
+  '../include/libpkgaudit/report.h',
   subdir: 'libpkgaudit',
 )
 

@@ -1,6 +1,11 @@
-model_test = executable(
-  'test-model',
-  'test_model.cpp',
-  dependencies: libpkgaudit_dep,
-)
-test('model', model_test)
+foreach name, source: {
+  'model': 'test_model.cpp',
+  'contract': 'test_contract.cpp',
+}
+  executable_test = executable(
+    'test-' + name,
+    source,
+    dependencies: libpkgaudit_dep,
+  )
+  test(name, executable_test)
+endforeach
