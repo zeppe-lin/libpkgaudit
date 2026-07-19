@@ -83,3 +83,21 @@ result = subprocess.run(
     [str(PKGCHK), "-d"], text=True, stdout=subprocess.PIPE,
     stderr=subprocess.PIPE, check=False)
 require(result.returncode == 2, "missing default database must be operational failure")
+
+result = subprocess.run(
+    [str(PKGCHK), "--help"], text=True, stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE, check=False)
+require(result.returncode == 0, result.stderr)
+require("Exit status" not in result.stderr, result.stderr)
+require("Audit installed package objects" in result.stdout, result.stdout)
+
+result = subprocess.run(
+    [str(PKGCHK), "--version"], text=True, stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE, check=False)
+require(result.returncode == 0, result.stderr)
+require("pkgchk (libpkgaudit)" in result.stdout, result.stdout)
+
+result = subprocess.run(
+    [str(PKGCHK), "-l", "-d"], text=True, stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE, check=False)
+require(result.returncode == 2, "conflicting modes must be usage failure")

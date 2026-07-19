@@ -217,6 +217,57 @@ TEST_CASE("unknown selected packages are rejected before probing")
   REQUIRE(backend.last_requests.empty());
 }
 
+
+TEST_CASE("unknown backend response identifiers are explicit contract failures")
+{
+  scripted_backend backend([](const auto& requests) {
+    auto valid = observed(requests[0], observed_object_type::regular);
+    auto unknown = valid;
+    unknown.id = 999999;
+    return std::vector<object_observation>{valid, unknown};
+  });
+
+  audit_request request{package_selection::only({"alpha"}),
+                        check_set{check::object_state}};
+  const auto result = auditor().run(sample_inventory(), request, backend);
+  REQUIRE(!result.complete());
+  REQUIRE(result.failures().size() == 3);
+}
+
+TEST_CASE("symlink ownership distinguishes source-owned and unowned targets")
+{
+  scripted_backend backend([](const auto& requests) {
+    std::vector<object_observation> result;
+    for (const auto& request : requests) {
+      auto value = observed(request, observed_object_type::regular);
+      if (request.path.string() == "etc/alpha") {
+        value.type = observed_object_type::symlink;
+        value.symlink = symlink_observation{
+            "/usr/bin/shared", object_path::parse("usr/bin/shared"),
+            object_path::parse("usr/bin/shared"),
+            symlink_resolution::resolved, std::nullopt};
+      } else if (request.path.string() == "usr/bin/shared") {
+        value.type = observed_object_type::symlink;
+        value.symlink = symlink_observation{
+            "/unowned", object_path::parse("unowned"),
+            object_path::parse("unowned"),
+            symlink_resolution::resolved, std::nullopt};
+      }
+      result.push_back(std::move(value));
+    }
+    return result;
+  });
+
+  audit_request request{package_selection::only({"alpha"}),
+                        check_set{check::symlink_ownership}};
+  const auto result = auditor().run(sample_inventory(), request, backend);
+  REQUIRE(result.relations().size() == 2);
+  REQUIRE(result.relations()[0].kind ==
+          ownership_relation_kind::source_package_owns_target);
+  REQUIRE(result.relations()[1].kind ==
+          ownership_relation_kind::target_is_unowned);
+}
+
 int main()
 {
   return test::run_all();
