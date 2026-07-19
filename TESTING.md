@@ -28,7 +28,8 @@ Suite inventory
 `audit`
 : missing objects, durable class mismatch, shared-path deduplication,
   package-scoped findings, all ownership relations, dangling links, explicit
-  probe failures, missing/duplicate/unknown/mismatched backend responses, and
+  probe failures, missing/duplicate/unknown/mismatched backend responses, poisoned identifiers,
+  contradictory response fields, and
   absent selected packages.
 
 `posix`

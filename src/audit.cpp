@@ -137,18 +137,12 @@ auditor::run(const inventory& facts,
     }
 
     request_record& record = records[found->second];
-    if (record.response != nullptr) {
-      if (contract_failed.insert(response.id).second) {
-        failures.push_back({audit_failure_kind::backend_contract_violation,
-                            std::nullopt, record.request.path, std::nullopt,
-                            std::nullopt, 0});
-      }
-      record.response = nullptr;
+    if (contract_failed.count(response.id))
       continue;
-    }
 
-    if (response.path != record.request.path) {
+    if (record.response != nullptr || response.path != record.request.path) {
       contract_failed.insert(response.id);
+      record.response = nullptr;
       failures.push_back({audit_failure_kind::backend_contract_violation,
                           std::nullopt, record.request.path, std::nullopt,
                           std::nullopt, 0});
@@ -160,6 +154,38 @@ auditor::run(const inventory& facts,
 
   for (auto& record : records) {
     if (record.response == nullptr && !contract_failed.count(record.request.id)) {
+      contract_failed.insert(record.request.id);
+      failures.push_back({audit_failure_kind::backend_contract_violation,
+                          std::nullopt, record.request.path, std::nullopt,
+                          std::nullopt, 0});
+      continue;
+    }
+
+    if (record.response == nullptr)
+      continue;
+
+    const object_observation& response = *record.response;
+    bool valid = true;
+    if (response.failure) {
+      valid = !response.type && !response.symlink;
+    } else if (!response.type) {
+      valid = false;
+    } else if (*response.type != observed_object_type::symlink) {
+      valid = !response.symlink;
+    } else if (!record.request.resolve_symlink) {
+      valid = !response.symlink;
+    } else if (!response.symlink) {
+      valid = false;
+    } else if (response.symlink->failure) {
+      valid = response.symlink->resolution == symlink_resolution::failed;
+    } else {
+      valid = response.symlink->resolution != symlink_resolution::failed &&
+              response.symlink->resolution != symlink_resolution::not_requested;
+    }
+
+    if (!valid) {
+      contract_failed.insert(record.request.id);
+      record.response = nullptr;
       failures.push_back({audit_failure_kind::backend_contract_violation,
                           std::nullopt, record.request.path, std::nullopt,
                           std::nullopt, 0});
@@ -186,13 +212,6 @@ auditor::run(const inventory& facts,
         continue;
       }
 
-      if (!observed.type) {
-        failures.push_back({audit_failure_kind::backend_contract_violation,
-                            package->package(), expected.path,
-                            std::nullopt, std::nullopt, 0});
-        continue;
-      }
-
       if (request.checks.contains(check::object_state)) {
         if (*observed.type == observed_object_type::missing) {
           findings.push_back({finding_kind::missing_object,
@@ -214,13 +233,6 @@ auditor::run(const inventory& facts,
       if (*observed.type != observed_object_type::symlink || !resolve)
         continue;
 
-      if (!observed.symlink) {
-        failures.push_back({audit_failure_kind::backend_contract_violation,
-                            package->package(), expected.path,
-                            std::nullopt, std::nullopt, 0});
-        continue;
-      }
-
       const symlink_observation& link = *observed.symlink;
       if (link.failure) {
         failures.push_back({audit_failure_kind::probe_failed,
@@ -228,14 +240,6 @@ auditor::run(const inventory& facts,
                             link.failure->operation,
                             link.failure->error,
                             link.failure->system_error});
-        continue;
-      }
-
-      if (link.resolution == symlink_resolution::not_requested ||
-          link.resolution == symlink_resolution::failed) {
-        failures.push_back({audit_failure_kind::backend_contract_violation,
-                            package->package(), expected.path,
-                            std::nullopt, std::nullopt, 0});
         continue;
       }
 

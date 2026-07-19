@@ -60,8 +60,9 @@ The auditor validates that responses:
 
 * use only requested identifiers;
 * contain exactly one response per identifier;
-* retain the requested logical path; and
-* provide the fields required by their observed type.
+* retain the requested logical path;
+* provide exactly one of a failed observation or an observed type; and
+* provide only the symlink fields required by the request and observed type.
 
 Violations become `backend_contract_violation` failures.  They are not ignored
 and do not become integrity findings.

@@ -268,6 +268,54 @@ TEST_CASE("symlink ownership distinguishes source-owned and unowned targets")
           ownership_relation_kind::target_is_unowned);
 }
 
+
+TEST_CASE("a poisoned response identifier cannot re-enter through a third reply")
+{
+  scripted_backend backend([](const auto& requests) {
+    const auto value = observed(requests[0], observed_object_type::missing);
+    return std::vector<object_observation>{value, value, value};
+  });
+
+  audit_request request{package_selection::only({"alpha"}),
+                        check_set{check::object_state}};
+  const auto result = auditor().run(sample_inventory(), request, backend);
+  REQUIRE(!result.complete());
+  REQUIRE(result.findings().empty());
+  REQUIRE(result.failures().size() == 3);
+}
+
+TEST_CASE("contradictory response fields are backend contract failures")
+{
+  scripted_backend backend([](const auto& requests) {
+    auto failed_with_type = observed(requests[0], observed_object_type::regular);
+    failed_with_type.failure = probe_failure{
+        probe_operation::inspect_object, probe_error::io_error, 5};
+
+    auto regular_with_link = observed(requests[1], observed_object_type::regular);
+    regular_with_link.symlink = symlink_observation{
+        "target", std::nullopt, std::nullopt,
+        symlink_resolution::not_requested, std::nullopt};
+
+    auto unresolved_link = observed(requests[2], observed_object_type::symlink);
+    unresolved_link.symlink = symlink_observation{
+        "target", std::nullopt, std::nullopt,
+        symlink_resolution::not_requested, std::nullopt};
+
+    return std::vector<object_observation>{
+        failed_with_type, regular_with_link, unresolved_link};
+  });
+
+  audit_request request{package_selection::only({"alpha"}),
+                        check_set{check::object_state,
+                                  check::symlink_resolution}};
+  const auto result = auditor().run(sample_inventory(), request, backend);
+  REQUIRE(!result.complete());
+  REQUIRE(result.findings().empty());
+  REQUIRE(result.failures().size() == 3);
+  for (const auto& failure : result.failures())
+    REQUIRE(failure.kind == audit_failure_kind::backend_contract_violation);
+}
+
 int main()
 {
   return test::run_all();
