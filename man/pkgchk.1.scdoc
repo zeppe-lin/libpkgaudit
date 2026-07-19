@@ -1,0 +1,69 @@
+PKGCHK(1)
+
+# NAME
+
+pkgchk - audit installed package objects
+
+# SYNOPSIS
+
+*pkgchk* [-Vh] [-r _root-dir_] {-l | -d | -a} [_package_ ...]
+
+# DESCRIPTION
+
+*pkgchk* is the reference frontend for *libpkgaudit*(3).  It reads one
+immutable installed-state snapshot through libpkgstate, converts that
+snapshot into the independent audit model, observes the selected root,
+and presents the resulting facts.
+
+If no package names are supplied, all installed packages are audited.
+Exactly one audit mode is required.
+
+# OPTIONS
+
+*-l*, *--links*
+	Check symlink resolution and ownership.
+
+*-d*, *--disappeared*
+	Check object presence and durable directory/non-directory class.
+
+*-a*, *--audit*
+	Run all checks.
+
+*-r* _root-dir_, *--root*=_root-dir_
+	Read _root-dir_/var/lib/pkg/db and inspect objects beneath
+	_root-dir_.  The default is /.
+
+*-v*
+	Increase presentation detail.  Repeatable.
+
+*-V*, *--version*
+	Print version information and exit.
+
+*-h*, *--help*
+	Print usage and exit.
+
+# EXIT STATUS
+
+*0*
+	The audit completed without integrity findings.
+
+*1*
+	The audit completed and reported integrity findings.
+
+*2*
+	Command usage, installed state, filesystem observation, or backend
+	contract prevented a complete audit.
+
+Ownership relations are advisory and do not by themselves change the
+exit status.
+
+# DESIGN
+
+libpkgstate is linked by this executable, not by libpkgaudit.  Severity,
+diagnostic text, verbosity, and exit status are frontend policy.
+
+# SEE ALSO
+
+*libpkgaudit*(3), *pkginfo*(1)
+
+; vim: ft=scdoc cc=72 tw=70

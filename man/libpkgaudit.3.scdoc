@@ -2,63 +2,64 @@ LIBPKGAUDIT(3)
 
 # NAME
 
-libpkgaudit - package integrity audit library
+libpkgaudit - backend-neutral package integrity audit library
 
 # SYNOPSIS
 
 ```
-#include <libpkgaudit/auditor.h>
-#include <libpkgaudit/ownership_index.h>
-#include <libpkgaudit/probe.h>
-#include <libpkgaudit/types.h>
+#include <libpkgaudit/libpkgaudit.h>
 ```
 
 # DESCRIPTION
 
-libpkgaudit is a C++17 library that implements package integrity
-auditing logic independent of any command-line interface.
+*libpkgaudit* compares an immutable package-object inventory with typed
+filesystem observations and returns a structured report.
 
-The library separates auditing into distinct layers:
+The library does not open a package database.  A consumer constructs
+*pkgaudit::inventory* from its own authority and supplies a
+*pkgaudit::filesystem_backend*.  The library has no dependency on
+libpkgstate or libpkgcore.
 
-- Audit model (typed issues and options)
-- Ownership index (path to package reverse mapping)
-- Filesystem probe engine (pluggable execution backend)
+# MODEL
 
-This separation allows audit semantics to remain stable while
-execution strategy (e.g. serial, threaded, io\_uring) evolves.
+An inventory contains package identifiers and canonical root-relative
+objects.  Durable object identity is either directory or non-directory.
+Shared ownership is retained.
 
-# RESPONSIBILITIES
+An audit request explicitly selects packages and checks.  Filesystem
+requests carry stable identifiers.  Backends may return responses in
+any order, but must return exactly one matching response for every
+request.
 
-libpkgaudit provides:
+A report contains integrity findings, neutral ownership relations, and
+audit failures.  The report is complete only when the failure stream is
+empty.
 
-- Broken symlink detection
-- Disappeared file detection
-- Ownership-aware validation
+# FINDINGS
 
-It does not provide:
+Object-state checks may report missing objects and durable class
+mismatches.  Symlink checks may report dangling links, loops, and target
+escape from the selected root.
 
-- Package installation/removal
-- Persistent storage or database primitives
-- CLI parsing or output formatting
+Ownership checks classify a resolved target as owned by the source
+package, owned by another package, or unowned.  Severity is not part of
+the library result.
 
-# ARCHITECTURE
+# FILESYSTEM BACKEND
 
-The typical audit flow:
+*make_posix_filesystem_backend*(3) opens one target root and performs
+descriptor-relative observations with lstat semantics.  Absolute
+symlink targets are interpreted inside that root.  Resolution is
+bounded and target reads are checked for concurrent change.
 
-- Construct ownership_index
-- Create probe engine
-- Invoke auditor
-- Consume generated issues
+# ERRORS
 
-# INVARIANTS
-
-Audit results *MUST NOT* depend on probe engine implementation.
+Construction and request errors throw subclasses of
+*pkgaudit::audit_error*.  Per-object probe failures and backend protocol
+violations are returned in the report rather than silently ignored.
 
 # SEE ALSO
 
-*pkgaudit\_auditor*(3),
-*pkgaudit\_ownership_index*(3),
-*pkgaudit\_probe*(3),
-*pkgaudit\_types*(3)
+*pkgchk*(1)
 
 ; vim: ft=scdoc cc=72 tw=70

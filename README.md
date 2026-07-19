@@ -1,217 +1,179 @@
-# libpkgaudit
+libpkgaudit
+===========
 
-`libpkgaudit` is a small C++17 library for package integrity audits.
+`libpkgaudit` is a C++17 library for comparing an immutable package-object
+inventory with typed filesystem observations.
 
-It extracts audit logic out of `pkgchk(1)` (see [pkgutils][1]) and
-turns it into a reusable component with a clear boundary:
+It provides:
 
-- audit semantics
-- filesystem probing
-- ownership lookup
-- issue reporting
+* canonical root-relative audit paths;
+* immutable package facts with shared-ownership queries;
+* backend-neutral observation requests and responses;
+* deterministic object-state and symlink audit semantics;
+* typed integrity findings, ownership relations, and incomplete-audit failures;
+* a root-bound Linux/POSIX filesystem backend; and
+* an optional `pkgchk(1)` reference frontend.
 
-The goal is to let `pkgchk(1)` stay a thin CLI while the audit engine
-can evolve independently.
+The library has no package-database dependency.  It does not include or expose
+`libpkgstate`, inspect package archives, parse package filenames, assign
+severity, format diagnostics, or select an exit status.  A consumer supplies
+facts; `libpkgaudit` returns facts.
 
-## Why
+The implementation is original Zeppe-Lin code.  It is not derived from CRUX
+`pkgutils`, the historical `pkgchk(1)`, or the former CRUX-derived
+`libpkgcore` implementation.
 
-The old `pkgchk(1)` implementation mixed several concerns in one file:
+Model
+-----
 
-- command-line parsing
-- package database traversal
-- filesystem probing
-- ownership resolution
-- output formatting
+The supported composition is:
 
-That made performance work unnecessarily hard.  Any attempt to add
-parallel probing or `io_uring(7)` risked rewriting audit semantics at
-the same time.
+```text
+state or another authority
+          |
+          | consumer-owned adapter
+          v
+ pkgaudit::inventory
+          |
+          +--------------------+
+          |                    |
+          v                    v
+    audit_request       filesystem_backend
+          |                    |
+          +---------+----------+
+                    v
+             pkgaudit::report
+          findings / relations / failures
+```
 
-`libpkgaudit` fixes that by introducing a membrane between:
+`inventory` is a complete immutable fact universe for one audit.  The library
+does not make lazy ownership callbacks into an external database.  Shared
+objects are observed once and may produce package-scoped findings for every
+selected owner.
 
-- **what** is being audited
-- **how** filesystem state is probed
-- **how** results are presented
+Filesystem backends may return responses in any order.  Every request has a
+stable identifier; missing, duplicate, unknown, or path-mismatched responses
+become explicit backend-contract failures.  Probe failures are not converted
+into clean observations.
 
-## Scope
+`report::complete()` is true only when no probe or backend-contract failure was
+recorded.  Severity and presentation remain consumer policy.
 
-`libpkgaudit` is responsible for package audit logic such as:
+Requirements
+------------
 
-- broken symlink detection
-- symlink ownership awareness
-- disappeared file detection
-- ownership indexing
+Build-time requirements:
 
-It is **not** responsible for:
+* Linux;
+* a C++17 compiler;
+* Meson 1.6.0 or later;
+* Ninja; and
+* pkg-config.
 
-- package installation or removal
-- package database storage primitives
-- archive extraction
-- CLI argument parsing
-- final output formatting
+The optional `pkgchk` tool additionally requires `libpkgstate`.  Python 3 is
+required for its black-box command tests.  `scdoc` and Doxygen are optional
+documentation dependencies.
 
-Those remain outside the library.
+Building
+--------
 
-## Relationship to libpkgcore
-
-`libpkgaudit` depends on [libpkgcore][2].
-
-`libpkgcore` provides core package-management primitives such as
-package database access and helper utilities.
-
-`libpkgaudit` builds audit policy on top of that.
-
-Roughly:
-
-- `libpkgcore` = package core
-- `libpkgaudit` = audit engine
-- `pkgchk(1)` = CLI frontend
-
-## Design
-
-The library is built around three layers:
-
-### 1. Audit model
-
-Typed issues and audit options:
-
-- severity
-- issue kind
-- package
-- path
-- target
-- owner sets
-
-This keeps semantics explicit and testable.
-
-### 2. Ownership index
-
-A reverse index maps paths to package owners.
-
-This avoids rescanning the whole package database for every lookup.
-
-### 3. Probe engine
-
-Filesystem access lives behind a probe interface.
-
-This lets the execution engine change without changing audit semantics.
-
-Possible engines:
-
-- serial syscall loop
-- bounded thread pool
-- `io_uring(7)`
-
-The first implementation is intentionally simple and serial.
-The important part is the contract.
-
-## Current checks
-
-The initial library extracts the existing `pkgchk(1)` checks:
-
-- symlink integrity
-- disappeared files
-
-Future checks can be added without growing the CLI into another
-monolith.
-
-## Build requirements
-
-- C++17 compiler
-- Meson
-- Ninja
-- `pkg-config(1)`
-- [libpkgcore][2]
-
-`libpkgaudit` uses `libpkgcore` headers and links against
-`libpkgcore`.
-
-## Build
+Shared library and reference tool:
 
 ```sh
-# Configure
 meson setup build
-
-# Compile
 meson compile -C build
-
-# Install
-meson install -C build
+meson test -C build --print-errorlogs
 ```
 
-## Link Mode
-
-The build system supports controlling how external dependencies are
-linked.
-
-- `default_library` controls whether `libpkgaudit` itself is built as
-  a static library, shared library, or both.
-- `link_mode` controls whether dependencies are linked dynamically or
-  statically.
-
-`link_mode=static` requires `default_library=static`.
-
-Shared library builds cannot reliably link against non-PIC static
-dependencies.
-
-## pkg-config
-
-The build installs `libpkgaudit.pc`.
-
-Typical usage:
+Static library and static dependencies:
 
 ```sh
-pkg-config --cflags libpkgaudit
-pkg-config --libs libpkgaudit
+meson setup build-static \
+  -Ddefault_library=static \
+  -Dlink_mode=static
+meson compile -C build-static
+meson test -C build-static --print-errorlogs
 ```
 
-For static linkage:
+Library-only build:
 
 ```sh
+meson setup build-library -Dtools=disabled
+```
+
+Reference tools are built by default and are not installed by default.  They
+may be disabled or installed explicitly:
+
+```sh
+meson setup build-no-tools -Dtools=disabled
+meson setup build-install-tools -Dinstall_tools=true
+```
+
+The project rejects `default_library=both`; shared and static artifacts are
+separate builds.
+
+Reference tool
+--------------
+
+`tools/pkgchk` is the composition root for the current Zeppe-Lin installed
+state:
+
+```text
+libpkgstate::snapshot
+          |
+          | private tools/pkgstate_adapter
+          v
+ pkgaudit::inventory -> libpkgaudit -> terminal policy
+```
+
+The adapter is private to the executable and is not installed.  `libpkgaudit`
+does not link against `libpkgstate`, and `libpkgaudit.pc` does not advertise it.
+
+During migration the executable remains uninstalled unless
+`-Dinstall_tools=true` is selected.  It preserves the useful historical mode
+spellings without preserving the inherited implementation.
+
+API documentation
+-----------------
+
+Public interfaces are documented under `include/libpkgaudit`.  Generate the
+HTML reference with:
+
+```sh
+doxygen Doxyfile
+```
+
+The output is written to `build/docs/html`.
+
+Compiler and linker flags are available through pkg-config:
+
+```sh
+pkg-config --cflags --libs libpkgaudit
 pkg-config --static --libs libpkgaudit
 ```
 
-## Public API direction
+Documentation
+-------------
 
-The intended public surface is small:
+* `DESIGN.md` — architectural boundaries and invariants;
+* `TESTING.md` — test doctrine and suite inventory;
+* `MIGRATION.md` — behavioral changes from inherited `pkgchk`;
+* `HISTORY.md` — project lineage;
+* `libpkgaudit(3)` — library contract; and
+* `pkgchk(1)` — reference frontend.
 
-* issue and option types
-* ownership index
-* audit entry points
-* probe-engine interface
-* factory for the default serial probe engine
+Layout
+------
 
-The library returns typed issues.
-Formatting belongs to the caller.
+* `include/libpkgaudit/` — public API;
+* `src/` — audit semantics and POSIX backend;
+* `tools/` — optional `pkgchk` and private `libpkgstate` adapter;
+* `tests/` — model, contract, property, filesystem, adapter, and CLI tests;
+* `man/` — scdoc manual sources; and
+* `.github/workflows/` — compiler, shared/static, and sanitizer CI.
 
-That means the same audit engine can later serve:
+License
+-------
 
-* `pkgchk(1)`
-* JSON output
-* test harnesses
-* batch auditing tools
-
-## Status
-
-This library starts as an extraction from `pkgchk(1)`.
-
-The first milestone is correctness and API clarity, not maximum
-throughput.
-
-Once the semantics are pinned behind a stable contract, alternate
-probe engines can be added.
-
-In other words:
-
-first membrane, then concurrency.
-
-## License
-
-`libpkgaudit` is licensed under the
-[GNU General Public License v3 or later][3].
-
-See `COPYING` for license terms and `COPYRIGHT` for notices.
-
-[1]: https://github.com/zeppe-lin/pkgutils
-[2]: https://github.com/zeppe-lin/libpkgcore
-[3]: https://gnu.org/licenses/gpl.html
+`libpkgaudit` is licensed under the GNU General Public License version 3 or
+later.  See `COPYING` for license terms and `COPYRIGHT` for notices.
