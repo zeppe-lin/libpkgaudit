@@ -2,18 +2,20 @@ name: Build CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
     paths: &paths
       - "meson.build"
       - "meson.options"
-      - "meson_options.txt"
       - "include/**"
       - "src/**"
+      - "tools/**"
+      - "tests/**"
       - "man/**"
+      - "Doxyfile"
+      - "*.md"
       - ".github/**"
-
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
     paths: *paths
 
 jobs:
@@ -22,56 +24,174 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env:
-          - name: glibc
+        environment:
+          - name: glibc-gcc
             container: ""
+            cc: gcc
+            cxx: g++
             install: |
               sudo apt-get update
               sudo apt-get install -y \
-                meson ninja-build pkg-config g++ \
-                scdoc \
-                libarchive-dev libacl1-dev attr
-          - name: musl
-            container: "alpine:latest"
+                meson ninja-build pkg-config g++ python3 scdoc
+          - name: glibc-clang
+            container: ""
+            cc: clang
+            cxx: clang++
+            install: |
+              sudo apt-get update
+              sudo apt-get install -y \
+                meson ninja-build pkg-config clang python3 scdoc
+          - name: musl-gcc
+            container: alpine:latest
+            cc: gcc
+            cxx: g++
             install: |
               apk add --no-cache \
-                build-base meson ninja pkgconf \
-                scdoc \
-                libarchive-dev acl-dev attr-dev
-        cfg:
-          - name: shared
-            link_mode: shared
-          - name: static
-            link_mode: static
+                build-base meson ninja pkgconf python3 scdoc
+        link_mode: [shared, static]
 
-    name: ${{ matrix.env.name }} / ${{ matrix.cfg.name }}
-    container: ${{ matrix.env.container != '' && matrix.env.container || null }}
+    name: ${{ matrix.environment.name }} / ${{ matrix.link_mode }}
+    container: ${{ matrix.environment.container != '' && matrix.environment.container || null }}
+    env:
+      CC: ${{ matrix.environment.cc }}
+      CXX: ${{ matrix.environment.cxx }}
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Checkout libpkgcore
+      - name: Checkout libpkgstate
         uses: actions/checkout@v5
         with:
-          repository: zeppe-lin/libpkgcore
-          path: subprojects/libpkgcore
+          repository: zeppe-lin/libpkgstate
+          path: subprojects/libpkgstate
+
+      - name: Checkout libpkgimage
+        uses: actions/checkout@v5
+        with:
+          repository: zeppe-lin/libpkgimage
+          path: subprojects/libpkgimage
 
       - name: Install build dependencies
-        run: ${{ matrix.env.install }}
+        run: ${{ matrix.environment.install }}
 
       - name: Configure
         run: |
           meson setup build \
-            --buildtype=plain \
+            --buildtype=debugoptimized \
+            --werror \
             --wrap-mode=nodownload \
-            --force-fallback-for=libpkgcore \
-            -D default_library=${{ matrix.cfg.link_mode }} \
-            -D link_mode=${{ matrix.cfg.link_mode }} \
-            -D libpkgcore:link_mode=${{ matrix.cfg.link_mode }}
+            --force-fallback-for=libpkgstate,libpkgimage \
+            -Ddefault_library=${{ matrix.link_mode }} \
+            -Dlink_mode=${{ matrix.link_mode }} \
+            -Dlibpkgstate:link_mode=${{ matrix.link_mode }} \
+            -Dlibpkgimage:link_mode=${{ matrix.link_mode }}
 
       - name: Compile
         run: meson compile -C build -v
 
+      - name: Test
+        run: meson test -C build --print-errorlogs
+
       - name: Install to staging
+        run: DESTDIR="$PWD/stage" meson install -C build
+
+      - name: Verify pkg-config metadata
+        run: |
+          pc=$(find "$PWD/stage" -name libpkgaudit.pc -print -quit)
+          test -n "$pc"
+          grep -q '^Name: libpkgaudit$' "$pc"
+          ! grep -Eq 'libpkg(state|core)' "$pc"
+
+  library-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build pkg-config g++ scdoc
+
+      - name: Configure without package-state dependencies
+        run: |
+          meson setup build \
+            --buildtype=debugoptimized \
+            --werror \
+            --wrap-mode=nodownload \
+            -Dtools=disabled
+
+      - name: Compile and test
+        run: |
+          meson compile -C build -v
+          meson test -C build --print-errorlogs
+
+      - name: Install and inspect closure
         run: |
           DESTDIR="$PWD/stage" meson install -C build
+          pc=$(find "$PWD/stage" -name libpkgaudit.pc -print -quit)
+          test -n "$pc"
+          ! grep -Eq 'Requires.*libpkg(state|core)' "$pc"
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+      ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Checkout libpkgstate
+        uses: actions/checkout@v5
+        with:
+          repository: zeppe-lin/libpkgstate
+          path: subprojects/libpkgstate
+
+      - name: Checkout libpkgimage
+        uses: actions/checkout@v5
+        with:
+          repository: zeppe-lin/libpkgimage
+          path: subprojects/libpkgimage
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            meson ninja-build pkg-config clang python3 scdoc
+
+      - name: Configure sanitizers
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            --werror \
+            --wrap-mode=nodownload \
+            --force-fallback-for=libpkgstate,libpkgimage \
+            -Db_sanitize=address,undefined \
+            -Db_lundef=false
+
+      - name: Compile and test
+        run: |
+          meson compile -C build -v
+          meson test -C build --print-errorlogs
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install documentation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen scdoc
+
+      - name: Build API documentation
+        run: doxygen Doxyfile
+
+      - name: Build manual pages
+        run: |
+          scdoc < man/libpkgaudit.3.scdoc > /tmp/libpkgaudit.3
+          scdoc < man/pkgchk.1.scdoc > /tmp/pkgchk.1
+          test -s /tmp/libpkgaudit.3
+          test -s /tmp/pkgchk.1
