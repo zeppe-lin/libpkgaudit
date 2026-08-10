@@ -32,7 +32,7 @@ jobs:
             install: |
               sudo apt-get update
               sudo apt-get install -y \
-                meson ninja-build pkg-config g++ python3 scdoc
+                meson ninja-build pkg-config g++ python3 scdoc libssl-dev
           - name: glibc-clang
             container: ""
             cc: clang
@@ -40,14 +40,14 @@ jobs:
             install: |
               sudo apt-get update
               sudo apt-get install -y \
-                meson ninja-build pkg-config clang python3 scdoc
+                meson ninja-build pkg-config clang python3 scdoc libssl-dev
           - name: musl-gcc
             container: alpine:latest
             cc: gcc
             cxx: g++
             install: |
               apk add --no-cache \
-                build-base meson ninja pkgconf python3 scdoc
+                build-base meson ninja pkgconf python3 scdoc openssl-dev
         link_mode: [shared, static]
 
     name: ${{ matrix.environment.name }} / ${{ matrix.link_mode }}
@@ -65,11 +65,11 @@ jobs:
           repository: zeppe-lin/libpkgstate
           path: subprojects/libpkgstate
 
-      - name: Checkout libpkgimage
+      - name: Checkout libpkgstate-posix
         uses: actions/checkout@v5
         with:
-          repository: zeppe-lin/libpkgimage
-          path: subprojects/libpkgimage
+          repository: zeppe-lin/libpkgstate-posix
+          path: subprojects/libpkgstate-posix
 
       - name: Install build dependencies
         run: ${{ matrix.environment.install }}
@@ -80,11 +80,11 @@ jobs:
             --buildtype=debugoptimized \
             --werror \
             --wrap-mode=nodownload \
-            --force-fallback-for=libpkgstate,libpkgimage \
+            --force-fallback-for=libpkgstate,libpkgstate-posix \
             -Ddefault_library=${{ matrix.link_mode }} \
             -Dlink_mode=${{ matrix.link_mode }} \
             -Dlibpkgstate:link_mode=${{ matrix.link_mode }} \
-            -Dlibpkgimage:link_mode=${{ matrix.link_mode }}
+            -Dlibpkgstate-posix:link_mode=${{ matrix.link_mode }}
 
       - name: Compile
         run: meson compile -C build -v
@@ -95,12 +95,30 @@ jobs:
       - name: Install to staging
         run: DESTDIR="$PWD/stage" meson install -C build
 
-      - name: Verify pkg-config metadata
+      - name: Verify installed pkg-config consumer
         run: |
           pc=$(find "$PWD/stage" -name libpkgaudit.pc -print -quit)
           test -n "$pc"
           grep -q '^Name: libpkgaudit$' "$pc"
           ! grep -Eq 'libpkg(state|core)' "$pc"
+          cat > /tmp/libpkgaudit-consumer.cpp <<'EOF'
+          #include <libpkgaudit/libpkgaudit.h>
+
+          int main()
+          {
+            const pkgaudit::check_set checks{pkgaudit::check::object_state};
+            return checks.empty() ? 1 : 0;
+          }
+          EOF
+          pcdir=$(dirname "$pc")
+          PKG_CONFIG_PATH="$pcdir" \
+          PKG_CONFIG_SYSROOT_DIR="$PWD/stage" \
+            $CXX -std=c++17 -Wall -Wextra -Wpedantic -Werror \
+              /tmp/libpkgaudit-consumer.cpp \
+              $(PKG_CONFIG_PATH="$pcdir" \
+                PKG_CONFIG_SYSROOT_DIR="$PWD/stage" \
+                pkg-config --cflags --libs libpkgaudit) \
+              -o /tmp/libpkgaudit-consumer
 
   library-only:
     runs-on: ubuntu-latest
@@ -149,17 +167,17 @@ jobs:
           repository: zeppe-lin/libpkgstate
           path: subprojects/libpkgstate
 
-      - name: Checkout libpkgimage
+      - name: Checkout libpkgstate-posix
         uses: actions/checkout@v5
         with:
-          repository: zeppe-lin/libpkgimage
-          path: subprojects/libpkgimage
+          repository: zeppe-lin/libpkgstate-posix
+          path: subprojects/libpkgstate-posix
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            meson ninja-build pkg-config clang python3 scdoc
+            meson ninja-build pkg-config clang python3 scdoc libssl-dev
 
       - name: Configure sanitizers
         run: |
@@ -167,7 +185,7 @@ jobs:
             --buildtype=debug \
             --werror \
             --wrap-mode=nodownload \
-            --force-fallback-for=libpkgstate,libpkgimage \
+            --force-fallback-for=libpkgstate,libpkgstate-posix \
             -Db_sanitize=address,undefined \
             -Db_lundef=false
 

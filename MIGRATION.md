@@ -1,22 +1,28 @@
-Migration from inherited pkgchk
-===============================
+# Migration from inherited pkgchk
 
 This project is a clean replacement.  The CRUX-derived implementation is a
 behavioral reference only; no source is carried forward.
 
-Preserved interface
--------------------
+## Preserved audit modes
 
-The reference frontend retains the useful command spellings:
+The reference frontend retains the useful `-l`, `-d`, `-a`, `-r`, `-v`,
+`--help`, and `--version` spellings.  With no package arguments, every installed
+package is selected.
+
+Installed-state authority is intentionally native and explicit:
 
 ```text
-pkgchk [-Vh] [-r root-dir] {-l | -d | -a} [package ...]
+pkgchk {-l|-d|-a} --canonical-store path \
+  --managed-target id --state-store id --root-view id \
+  --state-backend id --publication-domain id \
+  [-r root-dir] [-v] [package ...]
 ```
 
-With no package arguments, every installed package is selected.
+There is no fallback to `/var/lib/pkg/db`.  `pkgchk` opens the supplied canonical
+generation store read-only and refuses absent, mismatched, or invalid binding
+authority instead of importing or reconstructing state.
 
-Redefined behavior
-------------------
+## Redefined behavior
 
 `-d`
 : checks both disappearance and durable directory/non-directory class.  A
@@ -40,12 +46,12 @@ Exit status
 : 0 means a complete audit with no integrity findings; 1 means integrity
   findings were reported; 2 means usage, state, or incomplete-audit failure.
 
-Removed accidental behavior
----------------------------
+## Removed accidental behavior
 
 The replacement removes:
 
 * `pkgutil` and `libpkgcore` from the audit library;
+* historical text-database discovery and import from the reference frontend;
 * regex-based ownership lookup;
 * string concatenation and prefix stripping for alternate roots;
 * positional coupling between probe requests and responses;
@@ -53,8 +59,7 @@ The replacement removes:
 * silent `lstat(2)` and `readlink(2)` failures; and
 * success exit status after per-package operational failures.
 
-Newly specified behavior
-------------------------
+## Newly specified behavior
 
 The replacement specifies:
 
@@ -64,5 +69,6 @@ The replacement specifies:
 * backend-contract validation;
 * explicit incomplete reports;
 * bounded root-contained symlink resolution;
-* private `libpkgstate` adaptation in `tools/`; and
+* private `libpkgstate` adaptation plus explicit `libpkgstate-posix` read-only
+  provider composition in `tools/`; and
 * independent library and frontend dependency closures.

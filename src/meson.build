@@ -20,6 +20,10 @@ libpkgaudit = library(
   install: true,
   version: meson.project_version(),
   soversion: '0',
+  gnu_symbol_visibility: 'hidden',
+  cpp_args: visibility_cpp_args,
+  link_args: ['-Wl,--version-script=' + elf_export_script_path],
+  link_depends: [elf_export_script],
 )
 
 libpkgaudit_dep = declare_dependency(
@@ -38,6 +42,7 @@ install_headers(
   '../include/libpkgaudit/observation.h',
   '../include/libpkgaudit/path.h',
   '../include/libpkgaudit/report.h',
+  '../include/libpkgaudit/visibility.h',
   subdir: 'libpkgaudit',
 )
 
@@ -46,5 +51,5 @@ pkgconf.generate(
   name: 'libpkgaudit',
   filebase: 'libpkgaudit',
   description: 'Backend-neutral package integrity audit library',
-  subdirs: 'libpkgaudit',
+  subdirs: '.',
 )

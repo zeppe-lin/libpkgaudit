@@ -6,14 +6,23 @@ pkgchk - audit installed package objects
 
 # SYNOPSIS
 
-*pkgchk* [-Vh] [-r _root-dir_] {-l | -d | -a} [_package_ ...]
+*pkgchk* {-l | -d | -a} *--canonical-store* _path_ \\
+	*--managed-target* _identity_ *--state-store* _identity_ \\
+	*--root-view* _identity_ *--state-backend* _identity_ \\
+	*--publication-domain* _identity_ [-r _root-dir_] [-v] [_package_ ...]
+
+*pkgchk* {-V | -h}
 
 # DESCRIPTION
 
-*pkgchk* is the reference frontend for *libpkgaudit*(3).  It reads one
-immutable installed-state snapshot through libpkgstate, converts that
-snapshot into the independent audit model, observes the selected root,
-and presents the resulting facts.
+*pkgchk* is the reference frontend for *libpkgaudit*(3).  It opens one
+existing canonical native installed-state store through libpkgstate-posix,
+converts the immutable snapshot into the independent audit model, observes
+the selected target root, and presents the resulting facts.
+
+The state store is opened read-only against the exact caller-supplied target
+binding.  *pkgchk* never initializes a store, publishes or repairs a
+generation, imports a historical database, or reconstructs missing state.
 
 If no package names are supplied, all installed packages are audited.
 Exactly one audit mode is required.
@@ -29,9 +38,26 @@ Exactly one audit mode is required.
 *-a*, *--audit*
 	Run all checks.
 
+*-c* _path_, *--canonical-store*=_path_
+	Open the existing canonical native installed-state store at _path_.
+
+*--managed-target*=_identity_
+	Managed package-target identity bound to the state store.
+
+*--state-store*=_identity_
+	Durable installed-state store identity.
+
+*--root-view*=_identity_
+	Logical target root-view identity.
+
+*--state-backend*=_identity_
+	Installed-state backend identity.
+
+*--publication-domain*=_identity_
+	Publication and locking-domain identity.
+
 *-r* _root-dir_, *--root*=_root-dir_
-	Read _root-dir_/var/lib/pkg/db and inspect objects beneath
-	_root-dir_.  The default is /.
+	Inspect objects beneath _root-dir_.  The default is /.
 
 *-v*
 	Increase presentation detail.  Repeatable.
@@ -59,11 +85,12 @@ exit status.
 
 # DESIGN
 
-libpkgstate is linked by this executable, not by libpkgaudit.  Severity,
-diagnostic text, verbosity, and exit status are frontend policy.
+libpkgstate and libpkgstate-posix are linked by this executable, not by
+libpkgaudit.  Severity, diagnostic text, verbosity, and exit status are
+frontend policy.
 
 # SEE ALSO
 
-*libpkgaudit*(3), *pkginfo*(1)
+*libpkgaudit*(3), *pkgstate-check*(1)
 
 ; vim: ft=scdoc cc=72 tw=70

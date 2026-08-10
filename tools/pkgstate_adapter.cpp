@@ -22,14 +22,14 @@ make_inventory(const pkgstate::snapshot& state)
 
     for (const pkgstate::owned_entry& entry : installed.manifest()) {
       objects.push_back({
-          pkgaudit::object_path::parse(entry.path.string()),
-          entry.type == pkgstate::owned_entry_type::directory
+          pkgaudit::object_path::parse(entry.path().string()),
+          entry.kind() == pkgstate::owned_object_kind::directory
               ? pkgaudit::expected_object_type::directory
               : pkgaudit::expected_object_type::non_directory,
       });
     }
 
-    packages.emplace_back(installed.identity().name(), std::move(objects));
+    packages.emplace_back(installed.release().name(), std::move(objects));
   }
 
   return pkgaudit::inventory(std::move(packages));

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <libpkgaudit/path.h>
+#include <libpkgaudit/visibility.h>
 
 namespace pkgaudit {
 
@@ -31,10 +32,10 @@ struct expected_object final
 };
 
 /*! \brief Compare expected objects for semantic equality. */
-[[nodiscard]] bool operator==(const expected_object& lhs,
+[[nodiscard]] PKGAUDIT_API bool operator==(const expected_object& lhs,
                               const expected_object& rhs) noexcept;
 /*! \brief Compare expected objects for semantic inequality. */
-[[nodiscard]] bool operator!=(const expected_object& lhs,
+[[nodiscard]] PKGAUDIT_API bool operator!=(const expected_object& lhs,
                               const expected_object& rhs) noexcept;
 
 /*! \brief Immutable expected objects owned by one package identifier. */
@@ -46,15 +47,15 @@ public:
    * Objects are sorted by path.  Duplicate paths and empty or line-unsafe
    * package identifiers are rejected.
    */
-  package_facts(std::string package,
+  PKGAUDIT_API package_facts(std::string package,
                 std::vector<expected_object> objects);
 
   /*! \brief Return the opaque package identifier. */
-  [[nodiscard]] const std::string& package() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::string& package() const noexcept;
   /*! \brief Return expected objects in canonical path order. */
-  [[nodiscard]] const std::vector<expected_object>& objects() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::vector<expected_object>& objects() const noexcept;
   /*! \brief Find an expected object by exact canonical path. */
-  [[nodiscard]] const expected_object*
+  [[nodiscard]] PKGAUDIT_API const expected_object*
   find(const object_path& path) const noexcept;
 
 private:
@@ -73,15 +74,15 @@ public:
   /*! \brief Construct and index a complete package inventory.
    *  \throws inventory_error on duplicate package identifiers.
    */
-  explicit inventory(std::vector<package_facts> packages = {});
+  PKGAUDIT_API explicit inventory(std::vector<package_facts> packages = {});
 
   /*! \brief Return packages in canonical identifier order. */
-  [[nodiscard]] const std::vector<package_facts>& packages() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::vector<package_facts>& packages() const noexcept;
   /*! \brief Find package facts by exact identifier. */
-  [[nodiscard]] const package_facts*
+  [[nodiscard]] PKGAUDIT_API const package_facts*
   find_package(std::string_view package) const noexcept;
   /*! \brief Return every exact owner of a canonical path. */
-  [[nodiscard]] std::vector<std::string_view>
+  [[nodiscard]] PKGAUDIT_API std::vector<std::string_view>
   owners(const object_path& path) const;
 
 private:

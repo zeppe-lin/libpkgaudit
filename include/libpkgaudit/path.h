@@ -11,6 +11,8 @@
 #include <string>
 #include <string_view>
 
+#include <libpkgaudit/visibility.h>
+
 namespace pkgaudit {
 
 /*! \brief Canonical root-relative path of one audited object.
@@ -25,23 +27,23 @@ public:
   /*! \brief Normalize and validate a logical path.
    *  \throws path_error when the input violates the path contract.
    */
-  [[nodiscard]] static object_path parse(std::string_view input);
+  [[nodiscard]] static PKGAUDIT_API object_path parse(std::string_view input);
 
   /*! \brief Return the canonical root-relative spelling. */
-  [[nodiscard]] const std::string& string() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::string& string() const noexcept;
   /*! \brief Return the final path component. */
-  [[nodiscard]] std::string_view filename() const noexcept;
+  [[nodiscard]] PKGAUDIT_API std::string_view filename() const noexcept;
   /*! \brief Return the canonical parent, or no value for a top-level path. */
-  [[nodiscard]] std::optional<object_path> parent() const;
+  [[nodiscard]] PKGAUDIT_API std::optional<object_path> parent() const;
 
   /*! \brief Compare paths for semantic equality. */
-  friend bool operator==(const object_path& lhs,
+  friend PKGAUDIT_API bool operator==(const object_path& lhs,
                          const object_path& rhs) noexcept;
   /*! \brief Compare paths for semantic inequality. */
-  friend bool operator!=(const object_path& lhs,
+  friend PKGAUDIT_API bool operator!=(const object_path& lhs,
                          const object_path& rhs) noexcept;
   /*! \brief Order paths lexicographically by canonical spelling. */
-  friend bool operator<(const object_path& lhs,
+  friend PKGAUDIT_API bool operator<(const object_path& lhs,
                         const object_path& rhs) noexcept;
 
 private:
@@ -51,6 +53,6 @@ private:
 };
 
 /*! \brief Write a canonical audit path to a stream. */
-std::ostream& operator<<(std::ostream& out, const object_path& path);
+PKGAUDIT_API std::ostream& operator<<(std::ostream& out, const object_path& path);
 
 } // namespace pkgaudit

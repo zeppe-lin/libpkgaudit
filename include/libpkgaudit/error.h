@@ -9,10 +9,12 @@
 #include <stdexcept>
 #include <string>
 
+#include <libpkgaudit/visibility.h>
+
 namespace pkgaudit {
 
 /*! \brief Base exception for synchronous libpkgaudit contract errors. */
-class audit_error : public std::runtime_error
+class PKGAUDIT_API audit_error : public std::runtime_error
 {
 public:
   /*! \brief Construct an audit error with a diagnostic message. */
@@ -20,7 +22,7 @@ public:
 };
 
 /*! \brief Invalid canonical audit path. */
-class path_error final : public audit_error
+class PKGAUDIT_API path_error final : public audit_error
 {
 public:
   /*! \brief Construct a path validation error. */
@@ -28,7 +30,7 @@ public:
 };
 
 /*! \brief Invalid package facts, inventory, or package selection. */
-class inventory_error final : public audit_error
+class PKGAUDIT_API inventory_error final : public audit_error
 {
 public:
   /*! \brief Construct an inventory validation error. */

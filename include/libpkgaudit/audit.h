@@ -15,6 +15,7 @@
 #include <libpkgaudit/filesystem.h>
 #include <libpkgaudit/inventory.h>
 #include <libpkgaudit/report.h>
+#include <libpkgaudit/visibility.h>
 
 namespace pkgaudit {
 
@@ -32,14 +33,14 @@ class check_set final
 public:
   check_set() = default;
   /*! \brief Construct from an explicit list of checks. */
-  check_set(std::initializer_list<check> checks);
+  PKGAUDIT_API check_set(std::initializer_list<check> checks);
 
   /*! \brief Add one check. */
-  void add(check value) noexcept;
+  PKGAUDIT_API void add(check value) noexcept;
   /*! \brief Test whether one check is selected. */
-  [[nodiscard]] bool contains(check value) const noexcept;
+  [[nodiscard]] PKGAUDIT_API bool contains(check value) const noexcept;
   /*! \brief Test whether no checks are selected. */
-  [[nodiscard]] bool empty() const noexcept;
+  [[nodiscard]] PKGAUDIT_API bool empty() const noexcept;
 
 private:
   std::uint8_t bits_{0};
@@ -50,16 +51,16 @@ class package_selection final
 {
 public:
   /*! \brief Select every package in the inventory. */
-  [[nodiscard]] static package_selection all();
+  [[nodiscard]] static PKGAUDIT_API package_selection all();
   /*! \brief Select named packages after sorting and deduplication. */
-  [[nodiscard]] static package_selection only(std::vector<std::string> packages);
+  [[nodiscard]] static PKGAUDIT_API package_selection only(std::vector<std::string> packages);
 
   /*! \brief Test whether all packages are selected. */
-  [[nodiscard]] bool selects_all() const noexcept;
+  [[nodiscard]] PKGAUDIT_API bool selects_all() const noexcept;
   /*! \brief Return selected names in canonical order. */
-  [[nodiscard]] const std::vector<std::string>& packages() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::vector<std::string>& packages() const noexcept;
   /*! \brief Test whether an identifier belongs to the selection. */
-  [[nodiscard]] bool contains(std::string_view package) const noexcept;
+  [[nodiscard]] PKGAUDIT_API bool contains(std::string_view package) const noexcept;
 
 private:
   package_selection(bool all, std::vector<std::string> packages);
@@ -88,7 +89,7 @@ public:
    * \throws audit_error when no checks are selected.
    * \throws inventory_error when a selected package is absent.
    */
-  [[nodiscard]] report run(const inventory& facts,
+  [[nodiscard]] PKGAUDIT_API report run(const inventory& facts,
                            const audit_request& request,
                            filesystem_backend& filesystem) const;
 };

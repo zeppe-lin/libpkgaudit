@@ -12,6 +12,7 @@
 
 #include <libpkgaudit/inventory.h>
 #include <libpkgaudit/observation.h>
+#include <libpkgaudit/visibility.h>
 
 namespace pkgaudit {
 
@@ -80,19 +81,19 @@ class report final
 {
 public:
   /*! \brief Construct a report from canonical result streams. */
-  report(std::vector<finding> findings,
+  PKGAUDIT_API report(std::vector<finding> findings,
          std::vector<ownership_relation> relations,
          std::vector<audit_failure> failures);
 
   /*! \brief Return integrity findings in canonical order. */
-  [[nodiscard]] const std::vector<finding>& findings() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::vector<finding>& findings() const noexcept;
   /*! \brief Return ownership relations in canonical order. */
-  [[nodiscard]] const std::vector<ownership_relation>&
+  [[nodiscard]] PKGAUDIT_API const std::vector<ownership_relation>&
   relations() const noexcept;
   /*! \brief Return failures in canonical order. */
-  [[nodiscard]] const std::vector<audit_failure>& failures() const noexcept;
+  [[nodiscard]] PKGAUDIT_API const std::vector<audit_failure>& failures() const noexcept;
   /*! \brief Test whether every requested fact was established. */
-  [[nodiscard]] bool complete() const noexcept;
+  [[nodiscard]] PKGAUDIT_API bool complete() const noexcept;
 
 private:
   std::vector<finding> findings_;

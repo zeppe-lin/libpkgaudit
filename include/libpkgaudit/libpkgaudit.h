@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include <libpkgaudit/visibility.h>
 #include <libpkgaudit/audit.h>
 #include <libpkgaudit/error.h>
 #include <libpkgaudit/filesystem.h>

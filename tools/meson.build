@@ -16,6 +16,6 @@ pkgchk_executable = executable(
     pkgchk_config,
   ],
   include_directories: include_directories('.'),
-  dependencies: [libpkgaudit_dep, libpkgstate_dep],
+  dependencies: [libpkgaudit_dep, libpkgstate_dep, libpkgstate_posix_dep],
   install: get_option('install_tools'),
 )

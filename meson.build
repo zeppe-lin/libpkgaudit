@@ -10,6 +10,7 @@ project(
   default_options: [
     'cpp_std=c++17',
     'warning_level=3',
+    'default_library=shared',
     'b_ndebug=if-release',
   ],
 )
@@ -18,21 +19,48 @@ if get_option('default_library') == 'both'
   error('libpkgaudit requires separate shared and static builds')
 endif
 
+library_kind = get_option('default_library')
 want_static = get_option('link_mode') == 'static'
-if want_static and get_option('default_library') != 'static'
-  error('link_mode=static requires default_library=static')
+if (library_kind == 'static') != want_static
+  error('default_library and link_mode must both select shared or static')
+endif
+
+cpp = meson.get_compiler('cpp')
+visibility_cpp_args = []
+if cpp.has_argument('-fvisibility-inlines-hidden')
+  visibility_cpp_args += ['-fvisibility-inlines-hidden']
 endif
 
 pkgconf = import('pkgconfig')
+
+elf_export_generator = find_program(
+  meson.project_source_root() / 'scripts/generate-elf-export-script.sh',
+)
+elf_export_script_name = 'libpkgaudit.exports.map'
+elf_export_script_path = meson.current_build_dir() / elf_export_script_name
+elf_export_script = configure_file(
+  input: 'abi/libpkgaudit.exports',
+  output: elf_export_script_name,
+  command: [elf_export_generator, '@INPUT@'],
+  capture: true,
+)
 
 subdir('src')
 
 if get_option('tools').enabled()
   libpkgstate_dep = dependency(
     'libpkgstate',
+    version: '>=3.0.0',
     required: true,
     static: want_static,
     fallback: ['libpkgstate', 'libpkgstate_dep'],
+  )
+  libpkgstate_posix_dep = dependency(
+    'libpkgstate-posix',
+    version: '>=3.0.0',
+    required: true,
+    static: want_static,
+    fallback: ['libpkgstate-posix', 'libpkgstate_posix_dep'],
   )
   subdir('tools')
 endif

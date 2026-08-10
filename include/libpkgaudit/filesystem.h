@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <libpkgaudit/observation.h>
+#include <libpkgaudit/visibility.h>
 
 namespace pkgaudit {
 
@@ -20,7 +21,7 @@ namespace pkgaudit {
  * Responses may be returned in any order but must contain exactly one matching
  * response for every request identifier and path.
  */
-class filesystem_backend
+class PKGAUDIT_API filesystem_backend
 {
 public:
   virtual ~filesystem_backend() = default;
@@ -40,7 +41,7 @@ struct filesystem_options final
 /*! \brief Construct the descriptor-relative Linux/POSIX backend.
  *  \throws audit_error when the root cannot be opened or options are invalid.
  */
-[[nodiscard]] std::unique_ptr<filesystem_backend>
+[[nodiscard]] PKGAUDIT_API std::unique_ptr<filesystem_backend>
 make_posix_filesystem_backend(filesystem_options options = {});
 
 } // namespace pkgaudit

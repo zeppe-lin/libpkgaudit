@@ -1,5 +1,4 @@
-libpkgaudit
-===========
+# libpkgaudit
 
 `libpkgaudit` is a C++17 library for comparing an immutable package-object
 inventory with typed filesystem observations.
@@ -23,8 +22,7 @@ The implementation is original Zeppe-Lin code.  It is not derived from CRUX
 `pkgutils`, the historical `pkgchk(1)`, or the former CRUX-derived
 `libpkgcore` implementation.
 
-Model
------
+## Model
 
 The supported composition is:
 
@@ -59,8 +57,7 @@ into clean observations.
 `report::complete()` is true only when no probe or backend-contract failure was
 recorded.  Severity and presentation remain consumer policy.
 
-Requirements
-------------
+## Requirements
 
 Build-time requirements:
 
@@ -70,12 +67,11 @@ Build-time requirements:
 * Ninja; and
 * pkg-config.
 
-The optional `pkgchk` tool additionally requires `libpkgstate`.  Python 3 is
-required for its black-box command tests.  `scdoc` and Doxygen are optional
-documentation dependencies.
+The optional `pkgchk` tool additionally requires `libpkgstate` and
+`libpkgstate-posix`.  Python 3 is required for its black-box command tests.
+`scdoc` and Doxygen are optional documentation dependencies.
 
-Building
---------
+## Building
 
 Shared library and reference tool:
 
@@ -112,13 +108,15 @@ meson setup build-install-tools -Dinstall_tools=true
 The project rejects `default_library=both`; shared and static artifacts are
 separate builds.
 
-Reference tool
---------------
+## Reference tool
 
 `tools/pkgchk` is the composition root for the current Zeppe-Lin installed
 state:
 
 ```text
+libpkgstate-posix canonical generation store
+          |
+          v
 libpkgstate::snapshot
           |
           | private tools/pkgstate_adapter
@@ -127,14 +125,20 @@ libpkgstate::snapshot
 ```
 
 The adapter is private to the executable and is not installed.  `libpkgaudit`
-does not link against `libpkgstate`, and `libpkgaudit.pc` does not advertise it.
+does not link against `libpkgstate` or `libpkgstate-posix`, and
+`libpkgaudit.pc` does not advertise either dependency.
+
+`pkgchk` opens an existing `libpkgstate-posix` canonical generation store
+read-only.  The caller supplies its exact managed-target, state-store, root-view,
+state-backend, and publication-domain identities; the frontend does not discover,
+initialize, import, repair, or reconstruct state.  The target filesystem root is
+independent diagnostic mechanism input selected with `--root`.
 
 During migration the executable remains uninstalled unless
-`-Dinstall_tools=true` is selected.  It preserves the useful historical mode
-spellings without preserving the inherited implementation.
+`-Dinstall_tools=true` is selected.  It preserves the useful historical audit
+modes without preserving the inherited database mechanism.
 
-API documentation
------------------
+## API documentation
 
 Public interfaces are documented under `include/libpkgaudit`.  Generate the
 HTML reference with:
@@ -152,8 +156,12 @@ pkg-config --cflags --libs libpkgaudit
 pkg-config --static --libs libpkgaudit
 ```
 
-Documentation
--------------
+The shared-library surface is explicitly reviewed in `abi/libpkgaudit.exports`;
+private implementation and tool symbols are hidden.  CI also compiles a staged
+consumer through the installed `libpkgaudit.pc`, so source-tree include paths do
+not substitute for the installed interface.
+
+## Documentation
 
 * `DESIGN.md` — architectural boundaries and invariants;
 * `TESTING.md` — test doctrine and suite inventory;
@@ -162,18 +170,16 @@ Documentation
 * `libpkgaudit(3)` — library contract; and
 * `pkgchk(1)` — reference frontend.
 
-Layout
-------
+## Layout
 
 * `include/libpkgaudit/` — public API;
 * `src/` — audit semantics and POSIX backend;
-* `tools/` — optional `pkgchk` and private `libpkgstate` adapter;
-* `tests/` — model, contract, property, filesystem, adapter, and CLI tests;
+* `tools/` — optional native-state `pkgchk` and private `libpkgstate` adapter;
+* `tests/` — categorized unit, integration, mechanism, property, CLI, header, and contract qualification;
 * `man/` — scdoc manual sources; and
 * `.github/workflows/` — compiler, shared/static, and sanitizer CI.
 
-License
--------
+## License
 
 `libpkgaudit` is licensed under the GNU General Public License version 3 or
 later.  See `COPYING` for license terms and `COPYRIGHT` for notices.
