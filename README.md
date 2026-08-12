@@ -54,6 +54,11 @@ stable identifier; missing, duplicate, unknown, or path-mismatched responses
 become explicit backend-contract failures.  Probe failures are not converted
 into clean observations.
 
+The supplied POSIX backend confines pathname traversal to its opened target-root
+descriptor.  Intermediate symlinks are interpreted by the backend itself, so
+an alternate-root audit never follows an unresolved intermediate link into the
+host filesystem.
+
 `report::complete()` is true only when no probe or backend-contract failure was
 recorded.  Severity and presentation remain consumer policy.
 

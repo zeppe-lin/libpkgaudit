@@ -47,9 +47,11 @@ the library result.
 
 # FILESYSTEM BACKEND
 
-*make_posix_filesystem_backend*(3) opens one target root and performs
-descriptor-relative observations with lstat semantics.  Absolute
-symlink targets are interpreted inside that root.  Resolution is
+*make_posix_filesystem_backend*(3) opens one target root and walks
+requested paths component by component with descriptor-relative operations.
+The final owned object retains lstat semantics.  Intermediate symlinks are
+never left for host pathname traversal; absolute targets are interpreted inside
+the selected root and relative escapes above it are refused.  Resolution is
 bounded and target reads are checked for concurrent change.
 
 # ERRORS

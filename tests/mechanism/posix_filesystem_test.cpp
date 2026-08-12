@@ -107,6 +107,58 @@ TEST_CASE("relative and absolute symlinks resolve inside the selected root")
   }
 }
 
+TEST_CASE("intermediate absolute symlinks are rerooted inside the selected root")
+{
+  temporary_root root;
+  temporary_root outside;
+  outside.file("payload");
+  root.link(outside.path().string(), "escape");
+
+  auto backend = make_posix_filesystem_backend({root.path().string(), 40});
+  const auto value = observe(*backend, "escape/payload", false);
+  REQUIRE(value.type.has_value());
+  REQUIRE(*value.type == observed_object_type::missing);
+  REQUIRE(!value.failure.has_value());
+}
+
+TEST_CASE("intermediate relative symlinks cannot escape the selected root")
+{
+  temporary_root root;
+  temporary_root outside;
+  root.directory("dir");
+  outside.file("payload");
+
+  const fs::path target = fs::relative(outside.path(), root.path() / "dir");
+  root.link(target.string(), "dir/escape");
+
+  auto backend = make_posix_filesystem_backend({root.path().string(), 40});
+  const auto value = observe(*backend, "dir/escape/payload", false);
+  REQUIRE(!value.type.has_value());
+  REQUIRE(value.failure.has_value());
+  REQUIRE(value.failure->operation == probe_operation::inspect_object);
+  REQUIRE(value.failure->error == probe_error::outside_root);
+}
+
+TEST_CASE("symlinks beneath rerooted intermediate directories resolve logically")
+{
+  temporary_root root;
+  root.directory("real");
+  root.file("real/target");
+  root.link("target", "real/link");
+  root.link("/real", "alias");
+
+  auto backend = make_posix_filesystem_backend({root.path().string(), 40});
+  const auto value = observe(*backend, "alias/link");
+  REQUIRE(value.type.has_value());
+  REQUIRE(*value.type == observed_object_type::symlink);
+  REQUIRE(value.symlink.has_value());
+  REQUIRE(value.symlink->resolution == symlink_resolution::resolved);
+  REQUIRE(value.symlink->immediate_path.has_value());
+  REQUIRE(value.symlink->immediate_path->string() == "real/target");
+  REQUIRE(value.symlink->resolved_path.has_value());
+  REQUIRE(value.symlink->resolved_path->string() == "real/target");
+}
+
 TEST_CASE("dangling symlinks are observations rather than probe failures")
 {
   temporary_root root;

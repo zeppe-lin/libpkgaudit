@@ -33,8 +33,9 @@ CLI test is not a substitute for a missing semantic or mechanism contract.
 `mechanism`
 : the real POSIX backend against temporary roots: regular files, directories,
   links, FIFOs, missing objects, relative and absolute links inside alternate
-  roots, dangling links, loops, root escapes, unrepresentable targets, invalid
-  roots, and resolution limits.
+  roots, intermediate-link re-rooting and escape refusal, symlinks beneath
+  rerooted parents, dangling links, loops, root escapes, unrepresentable
+  targets, invalid roots, and resolution limits.
 
 `property`
 : package-order permutations, all completion orders for a representative

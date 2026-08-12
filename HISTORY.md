@@ -16,3 +16,9 @@ library returns findings, relations, and failures without presentation policy.
 native `libpkgstate-posix` canonical generation store against explicit target
 binding authority, then uses a private adapter from `libpkgstate::snapshot`; the
 library itself remains independent of both state libraries.
+
+Before the first release, the POSIX backend was hardened so root containment is
+mechanical rather than lexical: requested paths and symlink targets are walked
+one component at a time beneath the selected root descriptor.  This removed a
+case where `AT_SYMLINK_NOFOLLOW` protected only the final component while an
+intermediate symlink could still be followed by the host VFS.

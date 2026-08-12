@@ -97,15 +97,18 @@ order.
 
 ## POSIX backend
 
-The default backend opens the selected root once and uses descriptor-relative
-`fstatat(2)` and `readlinkat(2)` operations.  Owned objects are inspected with
-`lstat(2)` semantics.  Absolute symlink targets are interpreted inside the
-selected root rather than against the host root.
+The default backend opens the selected root once and walks every requested
+pathname one component at a time with descriptor-relative `fstatat(2)`,
+`openat(2)`, and `readlinkat(2)` operations.  Owned objects retain `lstat(2)`
+semantics for the final component.  No unresolved multi-component pathname is
+handed back to the host VFS: intermediate symlinks are read explicitly before
+descent, absolute targets are re-rooted inside the selected root, and relative
+traversal above that root is refused.
 
-Symlink chains are resolved component by component beneath the root descriptor.
-The backend bounds the number of followed links, detects missing components,
-rejects relative traversal above the selected root, and verifies that a
-symlink did not change across reading its target.
+Symlink chains are resolved through the same descriptor-confined walker.  The
+backend bounds the number of followed links, detects missing components,
+revalidates directory identity across descent, and verifies that a symlink did
+not change across reading its target.
 
 The backend returns logical paths.  Alternate-root host paths never leak into
 the semantic report.

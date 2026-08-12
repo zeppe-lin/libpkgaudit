@@ -26,6 +26,17 @@ grep -F "gnu_symbol_visibility: 'hidden'" "$root/src/meson.build" >/dev/null ||
 grep -F 'libpkgaudit.exports' "$root/meson.build" >/dev/null ||
   fail 'reviewed export surface is not wired into the build'
 
+grep -F '::openat' "$root/src/posix_filesystem.cpp" >/dev/null ||
+  fail 'POSIX backend no longer descends with descriptor-relative openat'
+grep -F 'O_NOFOLLOW' "$root/src/posix_filesystem.cpp" >/dev/null ||
+  fail 'POSIX backend no longer refuses kernel symlink following during descent'
+grep -F 'reset_to_root' "$root/src/posix_filesystem.cpp" >/dev/null ||
+  fail 'absolute symlink targets are no longer explicitly re-rooted'
+if grep -F 'request.path.string().c_str()' \
+    "$root/src/posix_filesystem.cpp" >/dev/null; then
+  fail 'POSIX backend handed a complete requested path back to host traversal'
+fi
+
 grep -F "if get_option('tools').enabled()" "$root/meson.build" >/dev/null ||
   fail 'optional frontend dependency boundary is absent'
 grep -F "'libpkgstate'" "$root/meson.build" >/dev/null ||

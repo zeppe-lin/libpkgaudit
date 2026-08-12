@@ -31,6 +31,8 @@ for document in README.md DESIGN.md man/libpkgaudit.3.scdoc
 
 grep -F 'descriptor-relative' "$root/DESIGN.md" >/dev/null ||
   fail 'design does not describe descriptor-relative observation'
+grep -F 'unresolved multi-component pathname' "$root/DESIGN.md" >/dev/null ||
+  fail 'design does not forbid host traversal of unresolved intermediate links'
 grep -F '::fstatat' "$root/src/posix_filesystem.cpp" >/dev/null ||
   fail 'descriptor-relative fstatat mechanism disappeared'
 grep -F '::readlinkat' "$root/src/posix_filesystem.cpp" >/dev/null ||

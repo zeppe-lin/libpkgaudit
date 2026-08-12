@@ -100,6 +100,12 @@ same_identity(const struct stat& lhs, const struct stat& rhs) noexcept
          lhs.st_ctim.tv_nsec == rhs.st_ctim.tv_nsec;
 }
 
+bool
+same_inode(const struct stat& lhs, const struct stat& rhs) noexcept
+{
+  return lhs.st_dev == rhs.st_dev && lhs.st_ino == rhs.st_ino;
+}
+
 struct link_read final
 {
   std::string target;
@@ -107,7 +113,8 @@ struct link_read final
 };
 
 link_read
-read_link_stable(int root, const std::string& path, const struct stat& before)
+read_link_stable(int directory, const std::string& name,
+                 const struct stat& before)
 {
   std::size_t capacity = before.st_size > 0
                        ? static_cast<std::size_t>(before.st_size) + 1U
@@ -116,7 +123,7 @@ read_link_stable(int root, const std::string& path, const struct stat& before)
 
   for (;;) {
     target.resize(capacity);
-    const ssize_t size = ::readlinkat(root, path.c_str(), target.data(),
+    const ssize_t size = ::readlinkat(directory, name.c_str(), target.data(),
                                       target.size());
     if (size < 0) {
       const int error = errno;
@@ -135,7 +142,7 @@ read_link_stable(int root, const std::string& path, const struct stat& before)
   }
 
   struct stat after {};
-  if (::fstatat(root, path.c_str(), &after, AT_SYMLINK_NOFOLLOW) < 0) {
+  if (::fstatat(directory, name.c_str(), &after, AT_SYMLINK_NOFOLLOW) < 0) {
     const int error = errno;
     return {{}, probe_failure{probe_operation::read_symlink,
                               classify_errno(error), error}};
@@ -183,6 +190,199 @@ join(const std::vector<std::string>& components)
   return result;
 }
 
+void
+prepend(std::deque<std::string>& pending, std::string_view target)
+{
+  auto components = split(target);
+  for (auto it = components.rbegin(); it != components.rend(); ++it)
+    pending.push_front(std::move(*it));
+}
+
+class directory_context final
+{
+public:
+  explicit directory_context(int root) noexcept
+    : root_(root)
+  {
+  }
+
+  directory_context(const directory_context&) = delete;
+  directory_context& operator=(const directory_context&) = delete;
+  directory_context(directory_context&&) noexcept = default;
+  directory_context& operator=(directory_context&&) noexcept = default;
+
+  [[nodiscard]] int current() const noexcept
+  {
+    return directories_.empty() ? root_ : directories_.back().get();
+  }
+
+  [[nodiscard]] const std::vector<std::string>& components() const noexcept
+  {
+    return components_;
+  }
+
+  void reset_to_root() noexcept
+  {
+    directories_.clear();
+    components_.clear();
+  }
+
+  [[nodiscard]] bool ascend() noexcept
+  {
+    if (directories_.empty())
+      return false;
+    directories_.pop_back();
+    components_.pop_back();
+    return true;
+  }
+
+  [[nodiscard]] std::optional<probe_failure>
+  descend(const std::string& component, const struct stat& before)
+  {
+    const int value = ::openat(
+        current(), component.c_str(),
+        O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+    if (value < 0) {
+      const int error = errno;
+      return probe_failure{probe_operation::inspect_object,
+                           classify_errno(error), error};
+    }
+
+    descriptor opened(value);
+    struct stat after {};
+    if (::fstat(opened.get(), &after) < 0) {
+      const int error = errno;
+      return probe_failure{probe_operation::inspect_object,
+                           classify_errno(error), error};
+    }
+    if (!same_inode(before, after)) {
+      return probe_failure{probe_operation::inspect_object,
+                           probe_error::object_changed, 0};
+    }
+
+    directories_.push_back(std::move(opened));
+    components_.push_back(component);
+    return std::nullopt;
+  }
+
+private:
+  int root_;
+  std::vector<descriptor> directories_;
+  std::vector<std::string> components_;
+};
+
+enum class lookup_status
+{
+  found,
+  missing,
+  loop,
+  outside,
+  failed,
+};
+
+struct object_lookup final
+{
+  lookup_status status;
+  struct stat object {};
+  directory_context parent;
+  std::string name;
+  std::optional<probe_failure> failure;
+
+  explicit object_lookup(int root)
+    : status(lookup_status::failed)
+    , parent(root)
+  {
+  }
+};
+
+object_lookup
+lookup_owned_object(int root, const object_path& path, std::size_t limit)
+{
+  object_lookup result(root);
+  std::deque<std::string> pending;
+  for (auto& component : path_components(path))
+    pending.push_back(std::move(component));
+
+  std::size_t followed = 0;
+  while (!pending.empty()) {
+    std::string component = std::move(pending.front());
+    pending.pop_front();
+
+    if (component.empty() || component == ".")
+      continue;
+    if (component == "..") {
+      if (!result.parent.ascend()) {
+        result.status = lookup_status::outside;
+        return result;
+      }
+      continue;
+    }
+    if (component.find('\n') != std::string::npos ||
+        component.find('\r') != std::string::npos) {
+      result.status = lookup_status::failed;
+      result.failure = probe_failure{probe_operation::inspect_object,
+                                     probe_error::unrepresentable_path, 0};
+      return result;
+    }
+
+    struct stat status {};
+    if (::fstatat(result.parent.current(), component.c_str(), &status,
+                  AT_SYMLINK_NOFOLLOW) < 0) {
+      const int error = errno;
+      if (error == ENOENT || error == ENOTDIR) {
+        result.status = lookup_status::missing;
+      } else {
+        result.status = lookup_status::failed;
+        result.failure = probe_failure{probe_operation::inspect_object,
+                                       classify_errno(error), error};
+      }
+      return result;
+    }
+
+    const bool final = pending.empty();
+    if (S_ISLNK(status.st_mode) && !final) {
+      if (++followed > limit) {
+        result.status = lookup_status::loop;
+        return result;
+      }
+
+      link_read link = read_link_stable(
+          result.parent.current(), component, status);
+      if (link.failure) {
+        result.status = lookup_status::failed;
+        result.failure = link.failure;
+        return result;
+      }
+
+      if (!link.target.empty() && link.target.front() == '/')
+        result.parent.reset_to_root();
+      prepend(pending, link.target);
+      continue;
+    }
+
+    if (final) {
+      result.status = lookup_status::found;
+      result.object = status;
+      result.name = std::move(component);
+      return result;
+    }
+
+    if (!S_ISDIR(status.st_mode)) {
+      result.status = lookup_status::missing;
+      return result;
+    }
+
+    if (auto failure = result.parent.descend(component, status)) {
+      result.status = lookup_status::failed;
+      result.failure = std::move(failure);
+      return result;
+    }
+  }
+
+  result.status = lookup_status::missing;
+  return result;
+}
+
 struct normalized_target final
 {
   std::optional<object_path> path;
@@ -191,13 +391,12 @@ struct normalized_target final
 };
 
 normalized_target
-normalize_target(const object_path& source, std::string_view target)
+normalize_target(const std::vector<std::string>& parent,
+                 std::string_view target)
 {
   std::vector<std::string> components;
-  if (target.empty() || target.front() != '/') {
-    if (const auto parent = source.parent())
-      components = path_components(*parent);
-  }
+  if (target.empty() || target.front() != '/')
+    components = parent;
 
   for (const auto& component : split(target)) {
     if (component.empty() || component == ".")
@@ -236,18 +435,14 @@ struct resolved_link final
 };
 
 resolved_link
-resolve_inside_root(int root, const object_path& source,
-                    std::string_view target, std::size_t limit)
+resolve_inside_root(directory_context context, std::string_view target,
+                    std::size_t limit)
 {
-  std::vector<std::string> resolved;
-  if (target.empty() || target.front() != '/') {
-    if (const auto parent = source.parent())
-      resolved = path_components(*parent);
-  }
+  if (!target.empty() && target.front() == '/')
+    context.reset_to_root();
 
   std::deque<std::string> pending;
-  for (auto& component : split(target))
-    pending.push_back(std::move(component));
+  prepend(pending, target);
 
   std::size_t followed = 0;
   while (!pending.empty()) {
@@ -257,9 +452,8 @@ resolve_inside_root(int root, const object_path& source,
     if (component.empty() || component == ".")
       continue;
     if (component == "..") {
-      if (resolved.empty())
+      if (!context.ascend())
         return {resolution_status::outside, std::nullopt, std::nullopt};
-      resolved.pop_back();
       continue;
     }
     if (component.find('\n') != std::string::npos ||
@@ -269,12 +463,9 @@ resolve_inside_root(int root, const object_path& source,
                             probe_error::unrepresentable_path, 0}};
     }
 
-    std::vector<std::string> candidate_components = resolved;
-    candidate_components.push_back(component);
-    const std::string candidate = join(candidate_components);
-
     struct stat status {};
-    if (::fstatat(root, candidate.c_str(), &status, AT_SYMLINK_NOFOLLOW) < 0) {
+    if (::fstatat(context.current(), component.c_str(), &status,
+                  AT_SYMLINK_NOFOLLOW) < 0) {
       const int error = errno;
       if (error == ENOENT || error == ENOTDIR)
         return {resolution_status::dangling, std::nullopt, std::nullopt};
@@ -283,30 +474,40 @@ resolve_inside_root(int root, const object_path& source,
                             classify_errno(error), error}};
     }
 
-    if (!S_ISLNK(status.st_mode)) {
-      resolved.push_back(std::move(component));
+    if (S_ISLNK(status.st_mode)) {
+      if (++followed > limit)
+        return {resolution_status::loop, std::nullopt, std::nullopt};
+
+      link_read link = read_link_stable(context.current(), component, status);
+      if (link.failure)
+        return {resolution_status::failed, std::nullopt, link.failure};
+
+      if (!link.target.empty() && link.target.front() == '/')
+        context.reset_to_root();
+      prepend(pending, link.target);
       continue;
     }
 
-    if (++followed > limit)
-      return {resolution_status::loop, std::nullopt, std::nullopt};
+    if (pending.empty()) {
+      auto components = context.components();
+      components.push_back(std::move(component));
+      return {resolution_status::resolved, object_path::parse(join(components)),
+              std::nullopt};
+    }
 
-    link_read link = read_link_stable(root, candidate, status);
-    if (link.failure)
-      return {resolution_status::failed, std::nullopt, link.failure};
+    if (!S_ISDIR(status.st_mode))
+      return {resolution_status::dangling, std::nullopt, std::nullopt};
 
-    if (!link.target.empty() && link.target.front() == '/')
-      resolved.clear();
-
-    auto replacement = split(link.target);
-    for (auto it = replacement.rbegin(); it != replacement.rend(); ++it)
-      pending.push_front(std::move(*it));
+    if (auto failure = context.descend(component, status)) {
+      failure->operation = probe_operation::resolve_symlink;
+      return {resolution_status::failed, std::nullopt, std::move(failure)};
+    }
   }
 
-  if (resolved.empty())
+  if (context.components().empty())
     return {resolution_status::resolved, std::nullopt, std::nullopt};
-  return {resolution_status::resolved, object_path::parse(join(resolved)),
-          std::nullopt};
+  return {resolution_status::resolved,
+          object_path::parse(join(context.components())), std::nullopt};
 }
 
 class posix_filesystem_backend final : public filesystem_backend
@@ -337,26 +538,36 @@ private:
   {
     object_observation result{request.id, request.path, std::nullopt,
                               std::nullopt, std::nullopt};
-    struct stat status {};
-    if (::fstatat(root_.get(), request.path.string().c_str(), &status,
-                  AT_SYMLINK_NOFOLLOW) < 0) {
-      const int error = errno;
-      if (error == ENOENT || error == ENOTDIR) {
+    object_lookup lookup = lookup_owned_object(
+        root_.get(), request.path, options_.symlink_limit);
+
+    switch (lookup.status) {
+      case lookup_status::missing:
         result.type = observed_object_type::missing;
-      } else {
+        return result;
+      case lookup_status::loop:
         result.failure = probe_failure{probe_operation::inspect_object,
-                                       classify_errno(error), error};
-      }
-      return result;
+                                       probe_error::too_many_symlinks, ELOOP};
+        return result;
+      case lookup_status::outside:
+        result.failure = probe_failure{probe_operation::inspect_object,
+                                       probe_error::outside_root, 0};
+        return result;
+      case lookup_status::failed:
+        result.failure = std::move(lookup.failure);
+        return result;
+      case lookup_status::found:
+        break;
     }
 
-    result.type = classify_mode(status.st_mode);
+    result.type = classify_mode(lookup.object.st_mode);
     if (*result.type != observed_object_type::symlink ||
         !request.resolve_symlink)
       return result;
 
     symlink_observation link;
-    link_read read = read_link_stable(root_.get(), request.path.string(), status);
+    link_read read = read_link_stable(
+        lookup.parent.current(), lookup.name, lookup.object);
     if (read.failure) {
       link.resolution = symlink_resolution::failed;
       link.failure = read.failure;
@@ -365,7 +576,8 @@ private:
     }
     link.target = std::move(read.target);
 
-    const normalized_target immediate = normalize_target(request.path, link.target);
+    const normalized_target immediate = normalize_target(
+        lookup.parent.components(), link.target);
     if (!immediate.representable) {
       link.resolution = symlink_resolution::failed;
       link.failure = probe_failure{probe_operation::resolve_symlink,
@@ -381,7 +593,7 @@ private:
     link.immediate_path = immediate.path;
 
     const resolved_link resolved = resolve_inside_root(
-        root_.get(), request.path, link.target, options_.symlink_limit);
+        std::move(lookup.parent), link.target, options_.symlink_limit);
     link.resolved_path = resolved.path;
     link.failure = resolved.failure;
     switch (resolved.status) {
